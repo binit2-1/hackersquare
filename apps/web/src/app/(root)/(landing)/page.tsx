@@ -7,9 +7,9 @@ const page = () => {
     <div className="w-screen h-screen flex justify-center items-center bg-background text-foreground">
       <SearchBar
         placeholders={[
-          "Search for anything...",
-          "Try 'React components'",
-          "Ask me anything...",
+          "Search for hackathons...",
+          "Try 'Hackathons near me'",
+          "Hackathons in ...",
         ]}
         interval={2500}
         onSubmit={(value: any) => console.log(value)}

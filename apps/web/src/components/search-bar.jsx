@@ -97,7 +97,7 @@ export function SearchBar({
   return (
     <>
       <style>{searchBarStyles}</style>
-      <form onSubmit={handleSubmit} className={`relative w-full max-w-lg ${className}`}>
+      <form onSubmit={handleSubmit} className={`relative w-full max-w-sm  ${className}`}>
         <div
           className={`
             relative flex items-center w-full px-1
