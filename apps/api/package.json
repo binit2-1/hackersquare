@@ -1,0 +1,10 @@
+{
+  "name": "api",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "air",
+    "build": "make build",
+    "start": "make start"
+  }
+}
