@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"github.com/binit2-1/hackersquare/apps/api/internal/database"
+	"github.com/binit2-1/hackersquare/apps/api/internal/hackathon"
 	"github.com/gorilla/mux"
 )
 
@@ -29,6 +30,9 @@ func main(){
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(`{"messages": "HackerSquare API is running smoothly!"}`))
 	})
+
+	//ROUTES
+	mux.HandleFunc("/api/hackathons", hackathon.GetHackathons).Methods("GET")
 
 	//start server
 	port := os.Getenv("PORT")
