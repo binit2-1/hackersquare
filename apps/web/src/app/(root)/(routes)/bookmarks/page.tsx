@@ -1,9 +1,13 @@
 import React from 'react'
 
-const page = () => {
+const BookmarksPage = () => {
   return (
-    <div>page</div>
+    <div className="min-h-screen bg-background">
+      <div className="max-w-196.5 mx-auto px-4 py-8">
+        {/* Bookmarks content will go here */}
+      </div>
+    </div>
   )
 }
 
-export default page
+export default BookmarksPage
