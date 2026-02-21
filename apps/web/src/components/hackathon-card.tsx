@@ -2,12 +2,12 @@
 
 import { useState } from "react";
 import {
-  BookmarkIcon,
-  CalendarIcon,
-  MapPinIcon,
-  TrophyIcon,
-  BuildingIcon,
-} from "lucide-react";
+  Bookmark,
+  Calendar,
+  MapPin,
+  Trophy,
+  Building,
+} from "@phosphor-icons/react/dist/ssr";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -19,8 +19,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import type { Hackathon } from "@/temp/hackathons";
-
+import type { HackathonProps } from "@/temp/hackathons";
 function formatDateRange(start: string, end: string): string {
   const s = new Date(start);
   const e = new Date(end);
@@ -29,7 +28,7 @@ function formatDateRange(start: string, end: string): string {
 }
 
 interface HackathonCardProps {
-  hackathon: Hackathon;
+  hackathon: HackathonProps;
 }
 
 export function HackathonCard({ hackathon }: HackathonCardProps) {
@@ -43,7 +42,7 @@ export function HackathonCard({ hackathon }: HackathonCardProps) {
             {hackathon.title}
           </CardTitle>
           <div className="flex items-center gap-1.5 text-muted-foreground text-xs">
-            <BuildingIcon className="size-3 shrink-0" />
+            <Building className="size-3 shrink-0" />
             <span className="truncate">{hackathon.host}</span>
           </div>
         </div>
@@ -54,28 +53,29 @@ export function HackathonCard({ hackathon }: HackathonCardProps) {
           aria-label={bookmarked ? "Remove bookmark" : "Bookmark hackathon"}
           onClick={() => setBookmarked(!bookmarked)}
         >
-          <BookmarkIcon
+          <Bookmark
             className={cn(
               "size-4 transition-colors",
-              bookmarked && "fill-primary stroke-primary"
+              bookmarked && "fill-primary"
             )}
+            weight={bookmarked ? "fill" : "regular"}
           />
         </Button>
       </CardHeader>
 
       <CardContent className="flex flex-col gap-2.5 px-5 pb-4 text-sm">
         <div className="flex items-center gap-2 text-muted-foreground">
-          <CalendarIcon className="size-3.5 shrink-0" />
+          <Calendar className="size-3.5 shrink-0" />
           <span>{formatDateRange(hackathon.startDate, hackathon.endDate)}</span>
         </div>
 
         <div className="flex items-center gap-2 text-muted-foreground">
-          <MapPinIcon className="size-3.5 shrink-0" />
+          <MapPin className="size-3.5 shrink-0" />
           <span>{hackathon.location}</span>
         </div>
 
         <div className="flex items-center gap-2 font-medium">
-          <TrophyIcon className="size-3.5 shrink-0 text-amber-500" />
+          <Trophy className="size-3.5 shrink-0 text-amber-500" />
           <span>{hackathon.prize}</span>
         </div>
 
