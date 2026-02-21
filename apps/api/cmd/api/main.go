@@ -8,6 +8,7 @@ import (
 
 	"github.com/binit2-1/hackersquare/apps/api/internal/database"
 	"github.com/binit2-1/hackersquare/apps/api/internal/hackathon"
+	scraper "github.com/binit2-1/hackersquare/apps/api/internal/scaper"
 	"github.com/gorilla/mux"
 )
 
@@ -44,6 +45,13 @@ func main(){
 		port = ":8080" //default port if not set in env
 	}
 	fmt.Printf("Starting server on port %s...\n", port)
+
+	//scrappers
+	go func() {
+		if err := scraper.RunDevfolioScraper(dbService); err != nil {
+			fmt.Printf("Scraper Error: %v\n", err)
+		}
+	}()
 
 	//http.ListenAndServe blocks the main thread to keep the sever alive 
 	err = http.ListenAndServe(port, mux)
