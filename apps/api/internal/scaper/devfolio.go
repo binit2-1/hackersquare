@@ -42,6 +42,10 @@ type DevfolioDetailResponse struct {
 				StartsAt string `json:"starts_at"`
 				EndsAt   string `json:"ends_at"`
 				Location string `json:"location"`
+				Prizes []struct {
+					Title string `json:"title"`
+					Value int `json:"amount"`
+				}
 			} `json:"hackathon"`
 		} `json:"pageProps"`
 	} `json:"props"`

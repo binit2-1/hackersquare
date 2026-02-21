@@ -52,6 +52,12 @@ func main(){
 			fmt.Printf("Scraper Error: %v\n", err)
 		}
 	}()
+	go func() {
+		fmt.Println("🚀 Starting MLH Scraper...")
+		if err := scraper.RunMLHScraper(dbService); err != nil {
+			fmt.Printf("❌ MLH Scraper Error: %v\n", err)
+		}
+	}()
 
 	//http.ListenAndServe blocks the main thread to keep the sever alive 
 	err = http.ListenAndServe(port, mux)
