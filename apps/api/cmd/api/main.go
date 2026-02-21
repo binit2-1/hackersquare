@@ -4,11 +4,22 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 
+	"github.com/binit2-1/hackersquare/apps/api/internal/database"
 	"github.com/gorilla/mux"
 )
 
 func main(){
+
+	//Initialize db
+	dbservice, err := database.New()
+	if err != nil{
+		log.Fatalf("Failed to initialize database service: %v", err)
+	}
+
+	defer dbservice.Close() //'defer' guarantees this runs right before main() exits
+
 	//create router
 	mux := mux.NewRouter()
 
@@ -20,11 +31,14 @@ func main(){
 	})
 
 	//start server
-	port := ":8080"
+	port := os.Getenv("PORT")
+	if port == ""{
+		port = ":8080" //default port if not set in env
+	}
 	fmt.Printf("Starting server on port %s...\n", port)
 
 	//http.ListenAndServe blocks the main thread to keep the sever alive 
-	err := http.ListenAndServe(port, mux)
+	err = http.ListenAndServe(port, mux)
 	if err!= nil{
 		log.Fatalf("Failed to start server: %v", err)
 	} 
