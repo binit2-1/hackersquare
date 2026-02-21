@@ -36,6 +36,7 @@ func main(){
 
 	//ROUTES
 	mux.HandleFunc("/api/hackathons", hackathonHandler.GetHackathons).Methods("GET")
+	mux.HandleFunc("/api/hackathon/{id}", hackathonHandler.GetHackathonByID).Methods("GET")
 
 	//start server
 	port := os.Getenv("PORT")
