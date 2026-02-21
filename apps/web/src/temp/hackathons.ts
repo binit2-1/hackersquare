@@ -1,4 +1,4 @@
-export interface Hackathon {
+export interface HackathonProps {
   id: string;
   title: string;
   host: string;
@@ -11,7 +11,7 @@ export interface Hackathon {
   applyUrl: string;
 }
 
-export const hackathons: Hackathon[] = [
+export const hackathons: HackathonProps[] = [
   {
     id: "1",
     title: "AI Build Week 2025",

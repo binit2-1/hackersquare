@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import type { HackathonProps } from "@/temp/hackathons";
+import { useBookmarks } from "@/hooks/useBookmarks";
 function formatDateRange(start: string, end: string): string {
   const s = new Date(start);
   const e = new Date(end);
@@ -32,7 +33,8 @@ interface HackathonCardProps {
 }
 
 export function HackathonCard({ hackathon }: HackathonCardProps) {
-  const [bookmarked, setBookmarked] = useState(hackathon.isBookmarked);
+  const {isBookmarked, toggleBookmark} = useBookmarks();
+  const bookmarked =  isBookmarked(hackathon.title);
 
   return (
     <Card className="flex flex-col gap-0 py-0 overflow-hidden">
@@ -51,7 +53,7 @@ export function HackathonCard({ hackathon }: HackathonCardProps) {
           size="icon"
           className="shrink-0 -mt-1 -mr-1"
           aria-label={bookmarked ? "Remove bookmark" : "Bookmark hackathon"}
-          onClick={() => setBookmarked(!bookmarked)}
+          onClick={() => toggleBookmark(hackathon)}
         >
           <Bookmark
             className={cn(
