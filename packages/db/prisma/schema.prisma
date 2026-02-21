@@ -1,0 +1,25 @@
+generator client {
+  provider = "prisma-client"
+  output   = "./generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Hackathon {
+  id        String   @id @unique @default(uuid())
+  title     String
+  host      String
+  location  String
+  prize     String
+  startDate DateTime
+  endDate   DateTime
+  applyUrl  String
+  tags      String[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("hackathons")
+}
