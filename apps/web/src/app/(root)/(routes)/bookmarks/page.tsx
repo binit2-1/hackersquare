@@ -5,6 +5,8 @@ import { useBookmarks } from "@/hooks/useBookmarks";
 
 const BookmarksPage = () => {
   const { bookmarks, mounted } = useBookmarks();
+
+
   if (!mounted) {
     return null;
   }

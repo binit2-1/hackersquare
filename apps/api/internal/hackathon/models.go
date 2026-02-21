@@ -6,10 +6,10 @@ type Hackathon struct {
 	ID        string    `json:"id"`
 	Title     string    `json:"title"`
 	Host      string    `json:"host"`
-	StartDate time.Time `json:"start_date"`
-	EndDate   time.Time `json:"end_date"`
+	StartDate time.Time `json:"startDate"`
+	EndDate   time.Time `json:"endDate"`
 	Location  string    `json:"location"`
 	Prize     string    `json:"prize"`
 	Tags      []string  `json:"tags"`
-	ApplyURL  string    `json:"apply_url"`
+	ApplyURL  string    `json:"applyUrl"`
 }

@@ -34,7 +34,7 @@ interface HackathonCardProps {
 
 export function HackathonCard({ hackathon }: HackathonCardProps) {
   const {isBookmarked, toggleBookmark} = useBookmarks();
-  const bookmarked =  isBookmarked(hackathon.title);
+  const bookmarked = isBookmarked(hackathon.id);
 
   return (
     <Card className="flex flex-col gap-0 py-0 overflow-hidden">
