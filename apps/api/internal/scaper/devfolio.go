@@ -114,13 +114,13 @@ func RunDevfolioScraper(db *database.Service) error {
 			continue
 		}
 
-		// 2. If it exists, skip it!
+		// Skip if already in database
 		if exists {
 			fmt.Printf("   ⏭️ Skipping '%s': Already exists in database.\n", title)
 			continue
 		}
 
-		// 3. If it doesn't exist, generate ID and Insert
+		// Insert new hackathon
 		newID := uuid.New().String()
 		tags := []string{"Devfolio", "Upcoming"}
 
