@@ -14,12 +14,15 @@ import (
 func main(){
 
 	//Initialize db
-	dbservice, err := database.New()
+	dbService, err := database.New()
 	if err != nil{
 		log.Fatalf("Failed to initialize database service: %v", err)
 	}
 
-	defer dbservice.Close() //'defer' guarantees this runs right before main() exits
+	defer dbService.Close() //'defer' guarantees this runs right before main() exits
+
+	// Initialize Hackathon Handler and inject the DB!
+    hackathonHandler := hackathon.NewHandler(dbService)
 
 	//create router
 	mux := mux.NewRouter()
@@ -32,7 +35,7 @@ func main(){
 	})
 
 	//ROUTES
-	mux.HandleFunc("/api/hackathons", hackathon.GetHackathons).Methods("GET")
+	mux.HandleFunc("/api/hackathons", hackathonHandler.GetHackathons).Methods("GET")
 
 	//start server
 	port := os.Getenv("PORT")

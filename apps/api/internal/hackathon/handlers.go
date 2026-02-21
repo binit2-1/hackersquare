@@ -4,10 +4,22 @@ import (
 	"encoding/json"
 	"net/http"
 	"time"
+
+	"github.com/binit2-1/hackersquare/apps/api/internal/database"
 )
 
+// Handler holds the database connection so our routes can use it
+type Handler struct{
+	DB *database.Service
+}
+
+//Constructor for Handler
+func NewHandler(db *database.Service) *Handler{
+	return &Handler{DB: db}
+}
+
 //GET /hackathons endpoint handler
-func GetHackathons(w http.ResponseWriter, r *http.Request){
+func(h *Handler) GetHackathons(w http.ResponseWriter, r *http.Request){
 	dummyData := []Hackathon{
 		{
 			ID:        "1",
