@@ -149,7 +149,7 @@ func UnstopAdapter(raw *UnstopRawEvents) (title, host, location, prize string, s
 
 	prize = "TBA"
 
-	applyURL = fmt.Sprintf("https://unstop.com/hackathons/%s", raw.SeoURL)
+	applyURL = fmt.Sprintf("%s", raw.SeoURL)
 
 	return title, host, location, prize, raw.RegnRequirements.StartRegnDt, raw.EndDate, applyURL, nil
 
