@@ -47,15 +47,22 @@ func main(){
 	fmt.Printf("Starting server on port %s...\n", port)
 
 	//scrappers
+	//DEVFOLIO
 	go func() {
 		if err := scraper.RunDevfolioScraper(dbService); err != nil {
 			fmt.Printf("Scraper Error: %v\n", err)
 		}
 	}()
+	//MLH
 	go func() {
-		fmt.Println("🚀 Starting MLH Scraper...")
 		if err := scraper.RunMLHScraper(dbService); err != nil {
 			fmt.Printf("❌ MLH Scraper Error: %v\n", err)
+		}
+	}()
+	//UNSTOP
+	go func(){
+		if err := scraper.RunUnstopScraper(dbService); err != nil{
+			fmt.Printf("❌ Unstop Scraper Error: %v\n", err)
 		}
 	}()
 

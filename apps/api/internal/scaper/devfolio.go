@@ -76,7 +76,7 @@ func RunDevfolioScraper(db *database.Service) error {
 	indexURL := fmt.Sprintf("https://devfolio.co/_next/data/%s/hackathons.json", buildID)
 	indexData, err := fetchIndex(indexURL)
 	if err != nil {
-		return fmt.Errorf("failed to fetch index: %w", err)
+		return fmt.Errorf("failed to fetch Devfolio index: %w", err)
 	}
 
 	if len(indexData.PageProps.DehydratedState.Queries) == 0 {
@@ -160,9 +160,6 @@ func RunDevfolioScraper(db *database.Service) error {
 		// Rate limiting to avoid being blocked
 		time.Sleep(1 * time.Second)
 
-		// TEST LIMITER: Break after 2 iterations during development so you don't wait 50 seconds
-		// Remove this 'if' block when you are ready to scrape the entire site.
-		
 	}
 
 	return nil
