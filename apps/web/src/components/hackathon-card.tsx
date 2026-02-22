@@ -65,7 +65,7 @@ export function HackathonCard({ hackathon }: HackathonCardProps) {
         </Button>
       </CardHeader>
 
-      <CardContent className="flex flex-col gap-2.5 px-5 pb-4 text-sm">
+      <CardContent className="flex flex-col gap-2.5 px-5 pb-4 text-sm flex-1">
         <div className="flex items-center gap-2 text-muted-foreground">
           <Calendar className="size-3.5 shrink-0" />
           <span>{formatDateRange(hackathon.startDate, hackathon.endDate)}</span>
