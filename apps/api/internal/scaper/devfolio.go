@@ -35,6 +35,8 @@ type DevfolioIndexResponse struct {
 type DevfolioDetailResponse struct {
 	Props struct {
 		PageProps struct {
+			AggregatePrizeValue float64 `json:"aggregatePrizeValue"`
+			AggregatePrizeCurrency string `json:"aggregatePrizeCurrency"`
 			Hackathon struct {
 				Name     string `json:"name"`
 				Slug     string `json:"slug"`
@@ -49,6 +51,14 @@ type DevfolioDetailResponse struct {
 			} `json:"hackathon"`
 		} `json:"pageProps"`
 	} `json:"props"`
+}
+
+//DevfolioPrizeJSON represents the structure of the prize data from the Devfolio prizes API endpoint
+type DevfolioPrizeJSON struct {
+	PageProps struct {
+		AggregatePrizeValue    float64 `json:"aggregatePrizeValue"`
+		AggregatePrizeCurrency string  `json:"aggregatePrizeCurrency"`
+	} `json:"pageProps"`
 }
 
 // RunDevfolioScraper fetches hackathons from Devfolio and saves them to the database
@@ -93,7 +103,12 @@ func RunDevfolioScraper(db *database.Service) error {
 		hackName := detailData.Props.PageProps.Hackathon.Name
 		fmt.Printf("   ✅ Success: Extracted %d bytes of markdown description for '%s'\n", descLength, hackName)
 
-		title, host, loc, prize, start, end, applyURL, err := DevfolioAdapter(detailData)
+		actualPrize, err := fetchPrize(hack.Slug, buildID)
+		if err != nil {
+            fmt.Printf("   ⚠️ Prize fetch failed for %s, defaulting to TBA\n", hack.Slug)
+        }
+
+		title, host, loc, prize, start, end, applyURL, err := DevfolioAdapter(detailData, actualPrize)
 		if err != nil {
 			fmt.Printf("   ⚠️ Adapter failed for %s: %v\n", hack.Slug, err)
 			continue
@@ -230,15 +245,46 @@ func fetchDetail(url string) (*DevfolioDetailResponse, error) {
 	return &data, nil
 }
 
+func fetchPrize(slug string, buildID string) (string, error){
+	hostname := fmt.Sprintf("%s.devfolio.co", slug)
+
+	url := fmt.Sprintf("https://%s/_next/data/%s/hackathon3/%s/prizes.json?slug=%s", 
+		hostname, buildID, hostname, hostname)
+
+	resp, err := http.Get(url)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "TBA", err
+	}
+
+	var prizeData DevfolioPrizeJSON
+	if err := json.NewDecoder(resp.Body).Decode(&prizeData); err != nil {
+		return "TBA", err
+	}
+
+	value := prizeData.PageProps.AggregatePrizeValue
+	currency := prizeData.PageProps.AggregatePrizeCurrency
+
+	if value == 0 || currency == "" {
+		return "TBA", nil
+	}
+	
+	return fmt.Sprintf("%.2f %s", value, currency), nil
+}
+
 // DevfolioAdapter converts Devfolio hackathon data to database format
-func DevfolioAdapter(raw *DevfolioDetailResponse) (title, host, location, prize string, startDate, endDate time.Time, applyURL string, err error) {
+func DevfolioAdapter(raw *DevfolioDetailResponse, actualPrize string) (title, host, location, prize string, startDate, endDate time.Time, applyURL string, err error) {
 	h := raw.Props.PageProps.Hackathon
 
 	// Map basic fields
 	title = h.Name
 	host = "Devfolio" // Hardcoded default since Devfolio doesn't explicitly name a host
 	location = h.Location
-	prize = "TBA" // You can add logic later to extract prize money from the Desc
+	prize = actualPrize // You can add logic later to extract prize money from the Desc
 	applyURL = fmt.Sprintf("https://%s.devfolio.co/", h.Slug)
 
 	// Parse dates from RFC3339 format
