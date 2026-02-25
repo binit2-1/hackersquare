@@ -10,6 +10,7 @@ type Hackathon struct {
 	EndDate   time.Time `json:"endDate"`
 	Location  string    `json:"location"`
 	Prize     string    `json:"prize"`
+	PrizeUSD  *float64   `json:"prizeUSD"`
 	Tags      []string  `json:"tags"`
 	ApplyURL  string    `json:"applyUrl"`
 }

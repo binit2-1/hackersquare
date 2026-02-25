@@ -3,7 +3,9 @@ package hackathon
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
+	"strconv"
 
 	"github.com/binit2-1/hackersquare/apps/api/internal/database"
 	"github.com/gorilla/mux"
@@ -22,10 +24,46 @@ func NewHandler(db *database.Service) *Handler{
 
 //GET /hackathons endpoint handler
 func(h *Handler) GetHackathons(w http.ResponseWriter, r *http.Request){
-	query := `SELECT id, title, host, location, prize, "startDate", "endDate", "applyUrl", tags FROM hackathons`
-	rows, err := h.DB.Pool.Query(r.Context(), query)
+	queryValues := r.URL.Query()
+	minPrize := queryValues.Get("minPrize")
+	maxPrize := queryValues.Get("maxaPrize")
+
+
+	query := `SELECT id, title, host, location, prize, "prizeUSD", "startDate", "endDate", "applyUrl", tags FROM hackathons WHERE 1=1`
+
+	var args[] any
+	argCount := 1
+
+	if minPrize != ""{
+		minVal, err := strconv.ParseFloat(minPrize, 64)
+		if err != nil{
+			http.Error(w, "Invalid minPrize value", http.StatusBadRequest)
+			return
+		}
+		minPrize = fmt.Sprintf("%.2f", minVal) // Format to 2 decimal places
+		query += fmt.Sprintf(` AND "prizeUSD" >= $%d`, argCount)
+		args = append(args, minPrize)
+		argCount++
+	}
+
+	if maxPrize != ""{
+		maxVal, err := strconv.ParseFloat(maxPrize, 64)
+		if err != nil{
+			http.Error(w, "Invalid maxPrize value", http.StatusBadRequest)
+			return
+		}
+		maxPrize = fmt.Sprintf("%.2f", maxVal) // Format to 2 decimal places
+		query += fmt.Sprintf(` AND "prizeUSD" <= $%d`, argCount)
+		args = append(args, maxPrize)
+		argCount++
+	}
+
+	query += ` ORDER BY "startDate" DESC`
+
+
+	rows, err := h.DB.Pool.Query(r.Context(), query, args...)
 	if err != nil{
-		http.Error(w, "Failed to query database", http.StatusInternalServerError)
+		fmt.Printf("❌ DB Query Error: %v\n", err)
 		return
 	}
 	defer rows.Close()
@@ -42,6 +80,7 @@ func(h *Handler) GetHackathons(w http.ResponseWriter, r *http.Request){
 			&hack.Host,
 			&hack.Location,
 			&hack.Prize,
+			&hack.PrizeUSD,
 			&hack.StartDate,
 			&hack.EndDate,
 			&hack.ApplyURL,
@@ -79,7 +118,7 @@ func(h *Handler) GetHackathonByID(w http.ResponseWriter, r *http.Request){
 	id := vars["id"]
 	
 	
-	query := `SELECT id, title, host, location, prize, "startDate", "endDate", "applyUrl", tags FROM hackathons WHERE id = $1`
+	query := `SELECT id, title, host, location, prize, "prizeUSD", "startDate", "endDate", "applyUrl", tags FROM hackathons WHERE id = $1`
 
 	var hack Hackathon
 
@@ -89,6 +128,7 @@ func(h *Handler) GetHackathonByID(w http.ResponseWriter, r *http.Request){
 		&hack.Host,
 		&hack.Location,
 		&hack.Prize,
+		&hack.PrizeUSD,
 		&hack.StartDate,
 		&hack.EndDate,
 		&hack.ApplyURL,
