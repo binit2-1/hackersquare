@@ -195,37 +195,6 @@ importers:
 
   packages/typescript-config: {}
 
-  packages/ui:
-    dependencies:
-      react:
-        specifier: ^19.2.0
-        version: 19.2.0
-      react-dom:
-        specifier: ^19.2.0
-        version: 19.2.0(react@19.2.0)
-    devDependencies:
-      '@repo/eslint-config':
-        specifier: workspace:*
-        version: link:../eslint-config
-      '@repo/typescript-config':
-        specifier: workspace:*
-        version: link:../typescript-config
-      '@types/node':
-        specifier: ^22.15.3
-        version: 22.15.3
-      '@types/react':
-        specifier: 19.2.2
-        version: 19.2.2
-      '@types/react-dom':
-        specifier: 19.2.2
-        version: 19.2.2(@types/react@19.2.2)
-      eslint:
-        specifier: ^9.39.1
-        version: 9.39.1(jiti@2.6.1)
-      typescript:
-        specifier: 5.9.2
-        version: 5.9.2
-
 packages:
 
   '@alloc/quick-lru@5.2.0':
@@ -1902,9 +1871,6 @@ packages:
 
   '@types/node@20.19.33':
     resolution: {integrity: sha512-Rs1bVAIdBs5gbTIKza/tgpMuG1k3U/UMJLWecIMxNdJFDMzcM5LOiLVRYh3PilWEYDIeUDv7bpiHPLPsbydGcw==}
-
-  '@types/node@22.15.3':
-    resolution: {integrity: sha512-lX7HFZeHf4QG/J7tBZqrCAXwz9J5RD56Y6MpP0eJkka8p+K0RY/yBTW7CYFJ4VGCclxqOLKmiGP5juQc6MKgcw==}
 
   '@types/pg@8.16.0':
     resolution: {integrity: sha512-RmhMd/wD+CF8Dfo+cVIy3RR5cl8CyfXQ0tGgW6XBL8L4LM/UTEbNXYRbLwU6w+CgrKBNbrQWt4FUtTfaU5jSYQ==}
@@ -4015,11 +3981,6 @@ packages:
     peerDependencies:
       react: '>=16.8.0'
 
-  react-dom@19.2.0:
-    resolution: {integrity: sha512-UlbRu4cAiGaIewkPyiRGJk0imDN2T3JjieT6spoL2UeSf5od4n5LB/mQ4ejmxhCFT1tYe8IvaFulzynWovsEFQ==}
-    peerDependencies:
-      react: ^19.2.0
-
   react-dom@19.2.3:
     resolution: {integrity: sha512-yELu4WmLPw5Mr/lmeEpox5rw3RETacE++JgHqQzd2dg+YbJuat3jH4ingc+WPZhxaoFzdv9y33G+F7Nl5O0GBg==}
     peerDependencies:
@@ -4084,10 +4045,6 @@ packages:
     peerDependencies:
       react: '>=16.6.0'
       react-dom: '>=16.6.0'
-
-  react@19.2.0:
-    resolution: {integrity: sha512-tmbWg6W31tQLeB5cdIBOicJDJRR2KzXsV7uSK9iNfLWQ5bIZfxuPEHp7M8wiHyHnn0DD1i7w3Zmin0FtkrwoCQ==}
-    engines: {node: '>=0.10.0'}
 
   react@19.2.3:
     resolution: {integrity: sha512-Ku/hhYbVjOQnXDZFv2+RibmLFGwFdeeKHFcOTlrt7xplBnya5OGn/hIRDsqDiSUcfORsDC7MPxwork8jBwsIWA==}
@@ -6430,10 +6387,6 @@ snapshots:
     dependencies:
       undici-types: 6.21.0
 
-  '@types/node@22.15.3':
-    dependencies:
-      undici-types: 6.21.0
-
   '@types/pg@8.16.0':
     dependencies:
       '@types/node': 20.19.33
@@ -8698,11 +8651,6 @@ snapshots:
       date-fns-jalali: 4.1.0-0
       react: 19.2.3
 
-  react-dom@19.2.0(react@19.2.0):
-    dependencies:
-      react: 19.2.0
-      scheduler: 0.27.0
-
   react-dom@19.2.3(react@19.2.3):
     dependencies:
       react: 19.2.3
@@ -8764,8 +8712,6 @@ snapshots:
       prop-types: 15.8.1
       react: 19.2.3
       react-dom: 19.2.3(react@19.2.3)
-
-  react@19.2.0: {}
 
   react@19.2.3: {}
 

@@ -13,6 +13,7 @@ model Hackathon {
   host      String
   location  String
   prize     String
+  prizeUSD  Decimal?@db.Decimal(12,2)
   startDate DateTime
   endDate   DateTime
   applyUrl  String

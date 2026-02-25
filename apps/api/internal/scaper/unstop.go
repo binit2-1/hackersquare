@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/binit2-1/hackersquare/apps/api/internal/database"
+	"github.com/binit2-1/hackersquare/apps/api/internal/utils"
 	"github.com/google/uuid"
 )
 
@@ -46,7 +47,7 @@ type UnstopPrize struct {
 
 func RunUnstopScraper(db *database.Service) error {
 	fmt.Println("🚀 [Unstop Scraper] Booting up...")
-
+	rate := utils.GetExchangeRate()
 	indexURL := "https://unstop.com/api/public/opportunity/search-result?opportunity=hackathons&page=1"
 	indexData, err := fetchUnstopIndex(indexURL)
 	if err != nil {
@@ -76,15 +77,15 @@ func RunUnstopScraper(db *database.Service) error {
 
 		for i, hack := range pageHackathons {
 			fmt.Printf("⏳ [%d/%d] Extracting data for: %s...\n", i+1, len(pageHackathons), hack.SeoURL)
-			title, host, loc, prize, start, end, applyURL, err := UnstopAdapter(&hack)
+			title, host, loc, prize, prizeUSD, start, end, applyURL, err := UnstopAdapter(&hack, rate)
 
 			if err != nil {
 				fmt.Printf("   ⚠️ Adapter failed for %s: %v\n", hack.SeoURL, err)
 				continue
 			}
 
-			fmt.Printf("   🔄 Transformed: %s | Host: %s | Loc: %s | Prize: %s | Starts: %s | Ends: %s | URL: %s\n",
-				title, host, loc, prize, start.Format("Jan 02, 2006"), end.Format("Jan 02, 2006"), applyURL,
+			fmt.Printf("   🔄 Transformed: %s | Host: %s | Loc: %s | Prize: %s | Prize (USD): %.2f | Starts: %s | Ends: %s | URL: %s\n",
+				title, host, loc, prize, prizeUSD, start.Format("Jan 02, 2006"), end.Format("Jan 02, 2006"), applyURL,
 			)
 
 			var exists bool
@@ -106,15 +107,16 @@ func RunUnstopScraper(db *database.Service) error {
 			//Insert new hackathon into db
 			newID := uuid.New().String()
 			tags := []string{"Unstop", "Upcoming"}
-			insertQuery := `INSERT INTO hackathons (id, title, host, location, prize, "startDate", "endDate", "applyUrl", tags, "updatedAt")
-						VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`
-
+			insertQuery := `INSERT INTO hackathons (id, title, host, location, prize, "prizeUSD", "startDate", "endDate", "applyUrl", tags, "updatedAt")
+						VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`
+			fmt.Printf("🛠️  DB DEBUG: Title: %s | Prize: %s | USD: %.2f\n", title, prize, prizeUSD)
 			_, err = db.Pool.Exec(context.Background(), insertQuery,
 				newID,
 				title,
 				host,
 				loc,
 				prize,
+				prizeUSD,
 				start,
 				end,
 				applyURL,
@@ -164,7 +166,7 @@ func fetchUnstopIndex(url string) (*UnstopAPIResponse, error) {
 	return &data, nil
 }
 
-func UnstopAdapter(raw *UnstopRawEvents) (title, host, location, prize string, startDate, endDate time.Time, applyURL string, err error) {
+func UnstopAdapter(raw *UnstopRawEvents, rate float64) (title, host, location, prize string, prizeUSD float64, startDate, endDate time.Time, applyURL string, err error) {
 
 	//map basic fields
 	title = raw.Title
@@ -196,8 +198,16 @@ func UnstopAdapter(raw *UnstopRawEvents) (title, host, location, prize string, s
 		prize = "TBA"
 	}
 
+	prizeUSD = 0.0
+	switch currency {
+	case "INR":
+		prizeUSD = totalCash / rate
+	case "USD":
+		prizeUSD = totalCash
+	}
+
 	applyURL = fmt.Sprintf("%s", raw.SeoURL)
 
-	return title, host, location, prize, raw.RegnRequirements.StartRegnDt, raw.EndDate, applyURL, nil
+	return title, host, location, prize, prizeUSD, raw.RegnRequirements.StartRegnDt, raw.EndDate, applyURL, nil
 
 }

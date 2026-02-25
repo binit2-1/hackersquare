@@ -9,10 +9,10 @@ import (
 	"regexp"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/binit2-1/hackersquare/apps/api/internal/database"
+	"github.com/binit2-1/hackersquare/apps/api/internal/utils"
+	"github.com/google/uuid"
 )
-
 
 // DevfolioIndexResponse represents the JSON structure from the hackathons list API.
 type DevfolioIndexResponse struct {
@@ -35,25 +35,25 @@ type DevfolioIndexResponse struct {
 type DevfolioDetailResponse struct {
 	Props struct {
 		PageProps struct {
-			AggregatePrizeValue float64 `json:"aggregatePrizeValue"`
-			AggregatePrizeCurrency string `json:"aggregatePrizeCurrency"`
-			Hackathon struct {
+			AggregatePrizeValue    float64 `json:"aggregatePrizeValue"`
+			AggregatePrizeCurrency string  `json:"aggregatePrizeCurrency"`
+			Hackathon              struct {
 				Name     string `json:"name"`
 				Slug     string `json:"slug"`
 				Desc     string `json:"desc"`
 				StartsAt string `json:"starts_at"`
 				EndsAt   string `json:"ends_at"`
 				Location string `json:"location"`
-				Prizes []struct {
+				Prizes   []struct {
 					Title string `json:"title"`
-					Value int `json:"amount"`
+					Value int    `json:"amount"`
 				}
 			} `json:"hackathon"`
 		} `json:"pageProps"`
 	} `json:"props"`
 }
 
-//DevfolioPrizeJSON represents the structure of the prize data from the Devfolio prizes API endpoint
+// DevfolioPrizeJSON represents the structure of the prize data from the Devfolio prizes API endpoint
 type DevfolioPrizeJSON struct {
 	PageProps struct {
 		AggregatePrizeValue    float64 `json:"aggregatePrizeValue"`
@@ -64,6 +64,7 @@ type DevfolioPrizeJSON struct {
 // RunDevfolioScraper fetches hackathons from Devfolio and saves them to the database
 func RunDevfolioScraper(db *database.Service) error {
 	fmt.Println("🚀 [Scraper] Booting up Devfolio ETL Pipeline...")
+	rate := utils.GetExchangeRate()
 
 	// Extract the dynamic build ID required for Devfolio's API
 	buildID, err := getBuildID()
@@ -105,20 +106,21 @@ func RunDevfolioScraper(db *database.Service) error {
 
 		actualPrize, err := fetchPrize(hack.Slug, buildID)
 		if err != nil {
-            fmt.Printf("   ⚠️ Prize fetch failed for %s, defaulting to TBA\n", hack.Slug)
-        }
+			fmt.Printf("   ⚠️ Prize fetch failed for %s, defaulting to TBA\n", hack.Slug)
+		}
 
-		title, host, loc, prize, start, end, applyURL, err := DevfolioAdapter(detailData, actualPrize)
+		title, host, loc, prize, prizeUSD, start, end, applyURL, err := DevfolioAdapter(detailData, actualPrize, rate)
 		if err != nil {
 			fmt.Printf("   ⚠️ Adapter failed for %s: %v\n", hack.Slug, err)
 			continue
 		}
 
-		fmt.Printf("   🔄 Transformed: %s | Host: %s | Loc: %s | Prize: %s | Starts: %s | Ends: %s | URL: %s\n",
+		fmt.Printf("   🔄 Transformed: %s | Host: %s | Loc: %s | Prize: %s | Prize USD: %.2f | Starts: %s | Ends: %s | URL: %s\n",
 			title,
 			host,
 			loc,
 			prize,
+			prizeUSD,
 			start.Format("Jan 02, 2006"),
 			end.Format("Jan 02, 2006"),
 			applyURL,
@@ -126,7 +128,7 @@ func RunDevfolioScraper(db *database.Service) error {
 
 		var exists bool
 		checkQuery := `SELECT EXISTS(SELECT 1 FROM hackathons WHERE "applyUrl" = $1)`
-		
+
 		err = db.Pool.QueryRow(context.Background(), checkQuery, applyURL).Scan(&exists)
 		if err != nil {
 			fmt.Printf("   ❌ Database Check Failed for %s: %v\n", title, err)
@@ -144,18 +146,17 @@ func RunDevfolioScraper(db *database.Service) error {
 		tags := []string{"Devfolio", "Upcoming"}
 
 		insertQuery := `
-			INSERT INTO hackathons (id, title, host, location, prize, "startDate", "endDate", "applyUrl", tags, "updatedAt")
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+			INSERT INTO hackathons (id, title, host, location, prize, "prizeUSD", "startDate", "endDate", "applyUrl", tags, "updatedAt")
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 		`
 
-		_, err = db.Pool.Exec(context.Background(), insertQuery, newID, title, host, loc, prize, start, end, applyURL, tags, time.Now())
+		_, err = db.Pool.Exec(context.Background(), insertQuery, newID, title, host, loc, prize, prizeUSD, start, end, applyURL, tags, time.Now())
 		if err != nil {
 			fmt.Printf("   ❌ Database Insert Failed for %s: %v\n", title, err)
 			continue
 		}
 
 		fmt.Printf("   💾 Successfully saved '%s' to PostgreSQL!\n", title)
-
 
 		// Rate limiting to avoid being blocked
 		time.Sleep(1 * time.Second)
@@ -242,10 +243,10 @@ func fetchDetail(url string) (*DevfolioDetailResponse, error) {
 	return &data, nil
 }
 
-func fetchPrize(slug string, buildID string) (string, error){
+func fetchPrize(slug string, buildID string) (string, error) {
 	hostname := fmt.Sprintf("%s.devfolio.co", slug)
 
-	url := fmt.Sprintf("https://%s/_next/data/%s/hackathon3/%s/prizes.json?slug=%s", 
+	url := fmt.Sprintf("https://%s/_next/data/%s/hackathon3/%s/prizes.json?slug=%s",
 		hostname, buildID, hostname, hostname)
 
 	resp, err := http.Get(url)
@@ -269,31 +270,46 @@ func fetchPrize(slug string, buildID string) (string, error){
 	if value == 0 || currency == "" {
 		return "TBA", nil
 	}
-	
+
 	return fmt.Sprintf("%.2f %s", value, currency), nil
 }
 
 // DevfolioAdapter converts Devfolio hackathon data to database format
-func DevfolioAdapter(raw *DevfolioDetailResponse, actualPrize string) (title, host, location, prize string, startDate, endDate time.Time, applyURL string, err error) {
+func DevfolioAdapter(raw *DevfolioDetailResponse, actualPrize string, rate float64) (title, host, location, prize string, prizeUSD float64, startDate, endDate time.Time, applyURL string, err error) {
 	h := raw.Props.PageProps.Hackathon
 
 	// Map basic fields
 	title = h.Name
 	host = "Devfolio" // Hardcoded default since Devfolio doesn't explicitly name a host
 	location = h.Location
-	prize = actualPrize // You can add logic later to extract prize money from the Desc
+	prize = actualPrize
+
+	totalCash := raw.Props.PageProps.AggregatePrizeValue
+    currency := raw.Props.PageProps.AggregatePrizeCurrency
+
+	prizeUSD = 0.0
+	switch currency {
+	case "INR":
+		prizeUSD = totalCash / rate
+
+	case "USD":
+		prizeUSD = totalCash
+	default:
+		prizeUSD = totalCash 
+	}
+
 	applyURL = fmt.Sprintf("https://%s.devfolio.co/", h.Slug)
 
 	// Parse dates from RFC3339 format
 	startDate, err = time.Parse(time.RFC3339, h.StartsAt)
 	if err != nil {
-		return "", "", "", "", time.Time{}, time.Time{}, "", fmt.Errorf("invalid start date format: %v", err)
+		return "", "", "", "", 0, time.Time{}, time.Time{}, "", fmt.Errorf("invalid start date format: %v", err)
 	}
 
 	endDate, err = time.Parse(time.RFC3339, h.EndsAt)
 	if err != nil {
-		return "", "", "", "", time.Time{}, time.Time{}, "", fmt.Errorf("invalid end date format: %v", err)
+		return "", "", "", "", 0, time.Time{}, time.Time{}, "", fmt.Errorf("invalid end date format: %v", err)
 	}
 
-	return title, host, location, prize, startDate, endDate, applyURL, nil
+	return title, host, location, prize, prizeUSD, startDate, endDate, applyURL, nil
 }

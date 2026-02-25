@@ -5,6 +5,7 @@ CREATE TABLE "hackathons" (
     "host" TEXT NOT NULL,
     "location" TEXT NOT NULL,
     "prize" TEXT NOT NULL,
+    "prizeUSD" DECIMAL(12,2),
     "startDate" TIMESTAMP(3) NOT NULL,
     "endDate" TIMESTAMP(3) NOT NULL,
     "applyUrl" TEXT NOT NULL,
