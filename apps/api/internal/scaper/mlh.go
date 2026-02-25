@@ -2,13 +2,13 @@ package scraper
 
 import (
 	"context"
-	"fmt"
 	"regexp"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/binit2-1/hackersquare/apps/api/internal/database"
+	"github.com/binit2-1/hackersquare/apps/api/internal/utils"
 	"github.com/gocolly/colly/v2"
 	"github.com/google/uuid"
 )
@@ -23,27 +23,27 @@ type MLHRawEvent struct {
 }
 
 func RunMLHScraper(db *database.Service) error {
-	fmt.Println("🚀 [MLH Scraper] Starting crawl...")
+	utils.Info("[MLH] Starting crawl")
 	c := colly.NewCollector(
 		colly.UserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"),
 	)
 
-	// TARGET: a[itemtype='https://schema.org/Event'] (Fixed your missing quote here)
+	// Select event items
 	c.OnHTML("a[itemtype='https://schema.org/Event']", func(e *colly.HTMLElement) {
 		name := e.ChildText("[itemprop='name']")
 		applyURL := e.Attr("href")
 		location := e.ChildText("p.font-bold.text-gray-700")
 		dateText := e.ChildText("p.text-gray-600")
 
-		fmt.Printf("🔍 Scraped: %s | Loc: %s | URL: %s\n", name, location, applyURL)
+		utils.Debug("Scraped: %s | Loc: %s | URL: %s", name, location, applyURL)
 
-		// STEP: Get Raw Description for future AI cleaning
+		// Get raw description
 		desc := ScrapeExternalDescription(applyURL)
 
-		// STEP: Parse Dates
+		// Parse dates
 		start, end := ParseMLHDates(dateText)
-		
-		// STEP: Save to Database (Ensuring no duplicates)
+
+		// Save (deduplicated)
 		SaveToDB(db, name, location, applyURL, desc, start, end)
 	})
 
@@ -115,7 +115,7 @@ func SaveToDB(db *database.Service, title, loc, url, desc string, start, end tim
 	db.Pool.QueryRow(context.Background(), checkQuery, url).Scan(&exists)
 
 	if exists {
-		fmt.Printf("   ⏭️  Skipping %s: Already exists.\n", title)
+		utils.Debug("Skipping %s: Already exists", title)
 		return
 	}
 
@@ -126,6 +126,6 @@ func SaveToDB(db *database.Service, title, loc, url, desc string, start, end tim
 	newID := uuid.New().String()
 	_, err := db.Pool.Exec(context.Background(), query, newID, title, "MLH", loc, "TBA", start, end, url, []string{"MLH", "Student"}, time.Now())
 	if err == nil {
-		fmt.Printf("   💾 Saved: %s\n", title)
+		utils.Debug("Saved: %s", title)
 	}
 }

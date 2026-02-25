@@ -46,7 +46,7 @@ type UnstopPrize struct {
 }
 
 func RunUnstopScraper(db *database.Service) error {
-	fmt.Println("🚀 [Unstop Scraper] Booting up...")
+	utils.Info("[Unstop] Starting scraper...")
 	rate := utils.GetExchangeRate()
 	indexURL := "https://unstop.com/api/public/opportunity/search-result?opportunity=hackathons&page=1"
 	indexData, err := fetchUnstopIndex(indexURL)
@@ -59,11 +59,11 @@ func RunUnstopScraper(db *database.Service) error {
 		return fmt.Errorf("no hackathons found in Unstop index")
 	}
 
-	fmt.Printf("📋 [Scraper] Found %d open hackathons. Beginning extraction...\n", len(hackathons))
+	utils.Info("Found %d open hackathons", len(hackathons))
 
-	//Pagination
+	// Pagination
 	for indexURL != "" {
-		fmt.Printf("🚀 [Unstop] Fetching page: %s\n", indexURL)
+		utils.Debug("Fetching page: %s", indexURL)
 
 		indexData, err := fetchUnstopIndex(indexURL)
 		if err != nil {
@@ -76,40 +76,36 @@ func RunUnstopScraper(db *database.Service) error {
 		}
 
 		for i, hack := range pageHackathons {
-			fmt.Printf("⏳ [%d/%d] Extracting data for: %s...\n", i+1, len(pageHackathons), hack.SeoURL)
+			utils.Debug("[%d/%d] Extracting: %s", i+1, len(pageHackathons), hack.SeoURL)
 			title, host, loc, prize, prizeUSD, start, end, applyURL, err := UnstopAdapter(&hack, rate)
 
 			if err != nil {
-				fmt.Printf("   ⚠️ Adapter failed for %s: %v\n", hack.SeoURL, err)
+				utils.Error("Adapter failed for %s: %v", hack.SeoURL, err)
 				continue
 			}
 
-			fmt.Printf("   🔄 Transformed: %s | Host: %s | Loc: %s | Prize: %s | Prize (USD): %.2f | Starts: %s | Ends: %s | URL: %s\n",
-				title, host, loc, prize, prizeUSD, start.Format("Jan 02, 2006"), end.Format("Jan 02, 2006"), applyURL,
-			)
+			utils.Debug("Transformed: %s | Host: %s | Loc: %s | Prize: %s | USD: %.2f", title, host, loc, prize, prizeUSD)
 
 			var exists bool
-
 			checkQuery := `SELECT EXISTS(SELECT 1 FROM hackathons WHERE "applyUrl" = $1)`
-
 			err = db.Pool.QueryRow(context.Background(), checkQuery, applyURL).Scan(&exists)
 			if err != nil {
-				fmt.Printf("   ❌ Database Check Failed for %s: %v\n", title, err)
+				utils.Error("Database check failed for %s: %v", title, err)
 				continue
 			}
 
 			// Skip if already in database
 			if exists {
-				fmt.Printf("   ⏭️ Skipping '%s': Already exists in database.\n", title)
+				utils.Debug("Skipping '%s': Already exists", title)
 				continue
 			}
 
-			//Insert new hackathon into db
+			// Insert new hackathon into db
 			newID := uuid.New().String()
 			tags := []string{"Unstop", "Upcoming"}
 			insertQuery := `INSERT INTO hackathons (id, title, host, location, prize, "prizeUSD", "startDate", "endDate", "applyUrl", tags, "updatedAt")
 						VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`
-			fmt.Printf("🛠️  DB DEBUG: Title: %s | Prize: %s | USD: %.2f\n", title, prize, prizeUSD)
+			utils.Debug("Inserting: %s | Prize: %s | USD: %.2f", title, prize, prizeUSD)
 			_, err = db.Pool.Exec(context.Background(), insertQuery,
 				newID,
 				title,
@@ -125,13 +121,13 @@ func RunUnstopScraper(db *database.Service) error {
 			)
 
 			if err != nil {
-				fmt.Printf("   ❌ Database Insert Failed for %s: %v\n", title, err)
+				utils.Error("Database insert failed for %s: %v", title, err)
 				continue
 			}
 
-			fmt.Printf("   💾 Successfully inserted '%s' into database.\n", title)
+			utils.Debug("Successfully inserted '%s'", title)
 
-			//Rate limit to avoid hitting Unstop's servers too hard
+			// Rate limit
 			time.Sleep(1 * time.Second)
 		}
 

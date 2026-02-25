@@ -63,17 +63,17 @@ type DevfolioPrizeJSON struct {
 
 // RunDevfolioScraper fetches hackathons from Devfolio and saves them to the database
 func RunDevfolioScraper(db *database.Service) error {
-	fmt.Println("🚀 [Scraper] Booting up Devfolio ETL Pipeline...")
+	utils.Info("[Devfolio] Booting up scraper...")
 	rate := utils.GetExchangeRate()
 
-	// Extract the dynamic build ID required for Devfolio's API
+	// Extract build ID
 	buildID, err := getBuildID()
 	if err != nil {
 		return fmt.Errorf("failed to get build ID: %w", err)
 	}
-	fmt.Printf("🔍 [Scraper] Secured Build ID: %s\n", buildID)
+	utils.Info("Secured Build ID: %s", buildID)
 
-	// Fetch the Index API to get the list of slugs
+	// Fetch index of hackathons
 	indexURL := fmt.Sprintf("https://devfolio.co/_next/data/%s/hackathons.json", buildID)
 	indexData, err := fetchIndex(indexURL)
 	if err != nil {
@@ -85,59 +85,50 @@ func RunDevfolioScraper(db *database.Service) error {
 	}
 
 	hackathons := indexData.PageProps.DehydratedState.Queries[0].State.Data.OpenHackathons
-	fmt.Printf("📋 [Scraper] Found %d open hackathons. Beginning extraction...\n", len(hackathons))
+	utils.Info("Found %d open hackathons", len(hackathons))
 
-	// Loop through the index and fetch Details via subdomain HTML
+	// Loop through index and fetch details
 	for i, hack := range hackathons {
-		fmt.Printf("⏳ [%d/%d] Extracting data for: %s...\n", i+1, len(hackathons), hack.Slug)
+		utils.Debug("[%d/%d] Extracting data for: %s", i+1, len(hackathons), hack.Slug)
 
-		// Construct the subdomain URL
+		// Construct subdomain URL
 		subdomainURL := fmt.Sprintf("https://%s.devfolio.co/", hack.Slug)
 
 		detailData, err := fetchDetail(subdomainURL)
 		if err != nil {
-			fmt.Printf("   ❌ Error fetching %s: %v\n", hack.Slug, err)
-			continue // Skip failed hackathons, don't stop the entire scraper
+			utils.Error("Error fetching %s: %v", hack.Slug, err)
+			continue
 		}
 
 		descLength := len(detailData.Props.PageProps.Hackathon.Desc)
 		hackName := detailData.Props.PageProps.Hackathon.Name
-		fmt.Printf("   ✅ Success: Extracted %d bytes of markdown description for '%s'\n", descLength, hackName)
+		utils.Debug("Extracted %d bytes of markdown description for '%s'", descLength, hackName)
 
 		actualPrize, err := fetchPrize(hack.Slug, buildID)
 		if err != nil {
-			fmt.Printf("   ⚠️ Prize fetch failed for %s, defaulting to TBA\n", hack.Slug)
+			utils.Debug("Prize fetch failed for %s, defaulting to TBA", hack.Slug)
 		}
 
 		title, host, loc, prize, prizeUSD, start, end, applyURL, err := DevfolioAdapter(detailData, actualPrize, rate)
 		if err != nil {
-			fmt.Printf("   ⚠️ Adapter failed for %s: %v\n", hack.Slug, err)
+			utils.Error("Adapter failed for %s: %v", hack.Slug, err)
 			continue
 		}
 
-		fmt.Printf("   🔄 Transformed: %s | Host: %s | Loc: %s | Prize: %s | Prize USD: %.2f | Starts: %s | Ends: %s | URL: %s\n",
-			title,
-			host,
-			loc,
-			prize,
-			prizeUSD,
-			start.Format("Jan 02, 2006"),
-			end.Format("Jan 02, 2006"),
-			applyURL,
-		)
+		utils.Debug("Transformed: %s | Host: %s | Loc: %s | Prize: %s | Prize USD: %.2f | Starts: %s | Ends: %s | URL: %s", title, host, loc, prize, prizeUSD, start.Format("Jan 02, 2006"), end.Format("Jan 02, 2006"), applyURL)
 
 		var exists bool
 		checkQuery := `SELECT EXISTS(SELECT 1 FROM hackathons WHERE "applyUrl" = $1)`
 
 		err = db.Pool.QueryRow(context.Background(), checkQuery, applyURL).Scan(&exists)
 		if err != nil {
-			fmt.Printf("   ❌ Database Check Failed for %s: %v\n", title, err)
+			utils.Error("Database check failed for %s: %v", title, err)
 			continue
 		}
 
 		// Skip if already in database
 		if exists {
-			fmt.Printf("   ⏭️ Skipping '%s': Already exists in database.\n", title)
+			utils.Debug("Skipping '%s': Already exists in database", title)
 			continue
 		}
 
@@ -152,13 +143,13 @@ func RunDevfolioScraper(db *database.Service) error {
 
 		_, err = db.Pool.Exec(context.Background(), insertQuery, newID, title, host, loc, prize, prizeUSD, start, end, applyURL, tags, time.Now())
 		if err != nil {
-			fmt.Printf("   ❌ Database Insert Failed for %s: %v\n", title, err)
+			utils.Error("Database insert failed for %s: %v", title, err)
 			continue
 		}
 
-		fmt.Printf("   💾 Successfully saved '%s' to PostgreSQL!\n", title)
+		utils.Debug("Successfully saved '%s' to PostgreSQL", title)
 
-		// Rate limiting to avoid being blocked
+		// Rate limiting
 		time.Sleep(1 * time.Second)
 
 	}
@@ -285,7 +276,7 @@ func DevfolioAdapter(raw *DevfolioDetailResponse, actualPrize string, rate float
 	prize = actualPrize
 
 	totalCash := raw.Props.PageProps.AggregatePrizeValue
-    currency := raw.Props.PageProps.AggregatePrizeCurrency
+	currency := raw.Props.PageProps.AggregatePrizeCurrency
 
 	prizeUSD = 0.0
 	switch currency {
@@ -295,7 +286,7 @@ func DevfolioAdapter(raw *DevfolioDetailResponse, actualPrize string, rate float
 	case "USD":
 		prizeUSD = totalCash
 	default:
-		prizeUSD = totalCash 
+		prizeUSD = totalCash
 	}
 
 	applyURL = fmt.Sprintf("https://%s.devfolio.co/", h.Slug)

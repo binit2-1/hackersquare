@@ -9,11 +9,18 @@ import (
 	"github.com/binit2-1/hackersquare/apps/api/internal/database"
 	"github.com/binit2-1/hackersquare/apps/api/internal/hackathon"
 	scraper "github.com/binit2-1/hackersquare/apps/api/internal/scaper"
+	"github.com/binit2-1/hackersquare/apps/api/internal/utils"
 	"github.com/gorilla/mux"
+	"github.com/joho/godotenv"
 )
 
 func main(){
 
+	err := godotenv.Load()
+	if err != nil{
+		log.Printf("No .env file found, relying on environment variables")
+	} 
+	utils.InitLogger()
 	//Initialize db
 	dbService, err := database.New()
 	if err != nil{
