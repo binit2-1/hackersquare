@@ -8,6 +8,7 @@ import (
 
 	"github.com/binit2-1/hackersquare/apps/api/internal/database"
 	"github.com/binit2-1/hackersquare/apps/api/internal/hackathon"
+	"github.com/binit2-1/hackersquare/apps/api/internal/middlewares"
 	scraper "github.com/binit2-1/hackersquare/apps/api/internal/scaper"
 	"github.com/binit2-1/hackersquare/apps/api/internal/utils"
 	"github.com/gorilla/mux"
@@ -34,6 +35,9 @@ func main(){
 
 	//create router
 	mux := mux.NewRouter()
+
+	//middlwares
+	mux.Use(middlewares.CorsMiddleware)	
 
 	//health check endpoint
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request){
