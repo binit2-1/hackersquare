@@ -14,7 +14,7 @@ import {
   CommandShortcut,
 } from "@/components/ui/command";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams, useRouter } from "next/navigation";
 import {
   Trophy,
   Bookmark,
@@ -28,6 +28,7 @@ import {
   ArrowRight,
 } from "@phosphor-icons/react/dist/ssr";
 import * as React from "react";
+
 
 interface FilterState {
   status: string | null;
@@ -68,6 +69,11 @@ const navItems = [
 ];
 
 export function Navbar() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+
   const [scrolled, setScrolled] = React.useState(false);
   const [filterOpen, setFilterOpen] = React.useState(false);
   const [searchOpen, setSearchOpen] = React.useState(false);
@@ -76,11 +82,10 @@ export function Navbar() {
   const [isLoading, setIsLoading] = React.useState(false);
   const [hackathons, setHackathons] = React.useState<HackathonProps[]>([]);
   const [activeFilters, setActiveFilters] = React.useState<FilterState>({
-    status: null,
-    location: null,
-    prizeRange: null,
+    status: searchParams.get("status") || null,
+    location: searchParams.get("location") || null,
+    prizeRange: searchParams.get("prizeRange") || null,
   });
-  const pathname = usePathname();
 
   // Scroll effect
   React.useEffect(() => {
@@ -113,85 +118,100 @@ export function Navbar() {
   }, []);
 
   // Fetch hackathons
-  React.useEffect(() => {
-    const fetchHackathons = async () => {
-      setIsLoading(true);
-      try {
-        const response = await fetch("http://localhost:8080/api/hackathons");
-        if (response.ok) {
-          const data = await response.json();
-          setHackathons(data);
-        }
-      } catch (error) {
-        console.error("Failed to fetch hackathons:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    if (searchOpen) {
-      fetchHackathons();
-    }
-  }, [searchOpen]);
+  // React.useEffect(() => {
+  //   const fetchHackathons = async () => {
+  //     setIsLoading(true);
+  //     try {
+  //       const response = await fetch("http://localhost:8080/api/hackathons");
+  //       if (response.ok) {
+  //         const data = await response.json();
+  //         setHackathons(data);
+  //       }
+  //     } catch (error) {
+  //       console.error("Failed to fetch hackathons:", error);
+  //     } finally {
+  //       setIsLoading(false);
+  //     }
+  //   };
+  //   if (searchOpen) {
+  //     fetchHackathons();
+  //   }
+  // }, [searchOpen]);
 
-  // Debounce search query for better performance
-  React.useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedQuery(searchQuery);
-    }, 150);
-    return () => clearTimeout(timer);
-  }, [searchQuery]);
+  // // Debounce search query for better performance
+  // React.useEffect(() => {
+  //   const timer = setTimeout(() => {
+  //     setDebouncedQuery(searchQuery);
+  //   }, 150);
+  //   return () => clearTimeout(timer);
+  // }, [searchQuery]);
 
-  // Memoized filtered results for performance
-  const filteredHackathons = React.useMemo(() => {
-    if (!debouncedQuery.trim()) return hackathons.slice(0, 10);
-    const query = debouncedQuery.toLowerCase();
-    return hackathons
-      .filter(
-        (h) =>
-          h.title.toLowerCase().includes(query) ||
-          h.host.toLowerCase().includes(query) ||
-          h.tags.some((tag) => tag.toLowerCase().includes(query)),
-      )
-      .slice(0, 10);
-  }, [debouncedQuery, hackathons]);
+  // // Memoized filtered results for performance
+  // const filteredHackathons = React.useMemo(() => {
+  //   if (!debouncedQuery.trim()) return hackathons.slice(0, 10);
+  //   const query = debouncedQuery.toLowerCase();
+  //   return hackathons
+  //     .filter(
+  //       (h) =>
+  //         h.title.toLowerCase().includes(query) ||
+  //         h.host.toLowerCase().includes(query) ||
+  //         h.tags.some((tag) => tag.toLowerCase().includes(query)),
+  //     )
+  //     .slice(0, 10);
+  // }, [debouncedQuery, hackathons]);
 
   // Count active filters
   const activeFilterCount = React.useMemo(() => {
     return Object.values(activeFilters).filter(Boolean).length;
   }, [activeFilters]);
 
-  const handleFilterSelect = (
-    type: keyof FilterState,
-    value: string | null,
-  ) => {
-    setActiveFilters((prev) => ({
-      ...prev,
-      [type]: prev[type] === value ? null : value,
-    }));
+  const handleFilterSelect = (type: keyof FilterState, value: string | null) => {
+    setActiveFilters((prev) => {
+      const newState = { ...prev, [type]: prev[type] === value ? null : value };
+      
+      const current = new URLSearchParams(Array.from(searchParams.entries()));
+      if (newState[type]) {
+        current.set(type, newState[type] as string);
+      } else {
+        current.delete(type);
+      }
+      
+      const search = current.toString();
+      router.push(`${pathname}${search ? `?${search}` : ""}`);
+      
+      return newState;
+    });
   };
 
   const clearFilters = () => {
     setActiveFilters({ status: null, location: null, prizeRange: null });
+    router.push(pathname);
+  };
+  
+  // Handles global search routing
+  const handleSearchSubmit = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && searchQuery.trim()) {
+      setSearchOpen(false);
+      const current = new URLSearchParams(Array.from(searchParams.entries()));
+      current.set("q", searchQuery.trim());
+      router.push(`/search?${current.toString()}`);
+    }
   };
 
   return (
     <header
       className={cn(
         "sticky top-0 z-50 w-full transition-all duration-200",
-        scrolled
-          ? "backdrop-blur-md border-b border-border/40 bg-background/80"
-          : "bg-background",
+        scrolled ? "backdrop-blur-md border-b border-border/40 bg-background/80" : "bg-background",
       )}
     >
       <div className="flex h-14 items-center">
-        {/* Logo - Far Left */}
         <div className="shrink-0 px-4 sm:px-6 lg:px-8">
           <Link href="/" className="block">
             <div className="h-8 w-8 rounded-full bg-primary" />
           </Link>
         </div>
 
-        {/* Center - Navigation inside max-w container (left aligned) */}
         <div className="flex-1 max-w-196.5 mx-auto flex items-center justify-between">
           <nav className="flex items-center gap-px">
             {navItems.map((item) => {
@@ -202,11 +222,8 @@ export function Navbar() {
                   key={item.href}
                   href={item.href}
                   className={cn(
-                    "flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-2 rounded-md font-medium transition-colors",
-                    "text-xs sm:text-sm lg:text-base",
-                    isActive
-                      ? "text-foreground"
-                      : "text-muted-foreground hover:text-foreground",
+                    "flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-2 rounded-md font-medium transition-colors text-xs sm:text-sm lg:text-base",
+                    isActive ? "text-foreground" : "text-muted-foreground hover:text-foreground",
                   )}
                 >
                   <Icon className="h-5 w-5 shrink-0" weight="regular" />
@@ -215,6 +232,7 @@ export function Navbar() {
               );
             })}
           </nav>
+
           <div className="flex items-center gap-1">
             <Button
               variant="ghost"
@@ -241,103 +259,37 @@ export function Navbar() {
             </Button>
           </div>
 
-          {/* Search Dialog */}
-          <CommandDialog
-            open={searchOpen}
-            onOpenChange={setSearchOpen}
-            title="Search Hackathons"
-            description="Search for hackathons by title, host, or tags"
-          >
+          <CommandDialog open={searchOpen} onOpenChange={setSearchOpen} title="Search Hackathons">
             <CommandInput
-              placeholder="Search hackathons..."
+              placeholder="Search hackathons and press Enter..."
               value={searchQuery}
               onValueChange={setSearchQuery}
+              onKeyDown={handleSearchSubmit}
             />
-            <CommandList className="max-h-[400px]">
-              {isLoading ? (
-                <div className="py-8 text-center text-sm text-muted-foreground">
-                  <div className="flex items-center justify-center gap-2">
-                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-                    Loading hackathons...
-                  </div>
-                </div>
-              ) : (
-                <>
-                  <CommandEmpty>
-                    {debouncedQuery.trim() ? (
-                      <div className="flex flex-col items-center gap-2 py-6">
-                        <span>No hackathons found for "{debouncedQuery}"</span>
-                        <span className="text-xs text-muted-foreground">
-                          Try searching by title, host, or tags
-                        </span>
-                      </div>
-                    ) : (
-                      "Start typing to search hackathons..."
-                    )}
-                  </CommandEmpty>
-                  {filteredHackathons.length > 0 && (
-                    <CommandGroup
-                      heading={
-                        debouncedQuery.trim()
-                          ? `Results (${filteredHackathons.length} found)`
-                          : "Recent Hackathons"
-                      }
-                    >
-                      {filteredHackathons.map((hackathon) => (
-                        <CommandItem
-                          key={hackathon.id}
-                          onSelect={() => {
-                            setSearchOpen(false);
-                            window.location.href = `/hackathon/${hackathon.id}`;
-                          }}
-                          className="cursor-pointer"
-                        >
-                          <div className="flex items-center gap-3 w-full">
-                            <div className="flex-1 min-w-0">
-                              <p className="font-medium truncate">
-                                {hackathon.title}
-                              </p>
-                              <p className="text-xs text-muted-foreground truncate">
-                                {hackathon.host}
-                              </p>
-                            </div>
-                            <ArrowRight className="h-4 w-4 text-muted-foreground shrink-0 opacity-0 group-data-[selected=true]:opacity-100 transition-opacity" />
-                          </div>
-                        </CommandItem>
-                      ))}
-                    </CommandGroup>
-                  )}
-                </>
-              )}
+            <CommandList className="max-h-100">
+               <CommandEmpty>
+                 {searchQuery.trim() ? `Press Enter to search for "${searchQuery}"` : "Start typing to search..."}
+               </CommandEmpty>
             </CommandList>
           </CommandDialog>
 
-          {/* Filter Dialog */}
-          <CommandDialog
-            open={filterOpen}
-            onOpenChange={setFilterOpen}
-            title="Filter Hackathons"
-            description="Filter hackathons by status, location, and prize range"
-          >
-            <CommandInput placeholder="Filter hackathons..." />
-            <CommandList className="max-h-[400px]">
+          <CommandDialog open={filterOpen} onOpenChange={setFilterOpen} title="Filter Hackathons">
+            <CommandInput placeholder="Search filters..." />
+            <CommandList className="max-h-100">
               <CommandEmpty>No matching filters.</CommandEmpty>
 
               <CommandGroup heading="Status">
                 {STATUS_FILTERS.map((filter) => (
                   <CommandItem
                     key={filter.value}
-                    onSelect={() =>
-                      handleFilterSelect("status", filter.value === "all" ? null : filter.value)
-                    }
+                    onSelect={() => handleFilterSelect("status", filter.value === "all" ? null : filter.value)}
                     className="cursor-pointer"
                   >
                     <div className="flex items-center gap-2 flex-1">
                       <Calendar className="h-4 w-4 text-muted-foreground" />
                       <span>{filter.label}</span>
                     </div>
-                    {(activeFilters.status === filter.value ||
-                      (filter.value === "all" && !activeFilters.status)) && (
+                    {(activeFilters.status === filter.value || (filter.value === "all" && !activeFilters.status)) && (
                       <Check className="h-4 w-4 text-primary" />
                     )}
                   </CommandItem>
@@ -357,9 +309,7 @@ export function Navbar() {
                       <MapPin className="h-4 w-4 text-muted-foreground" />
                       <span>{filter.label}</span>
                     </div>
-                    {activeFilters.location === filter.value && (
-                      <Check className="h-4 w-4 text-primary" />
-                    )}
+                    {activeFilters.location === filter.value && <Check className="h-4 w-4 text-primary" />}
                   </CommandItem>
                 ))}
               </CommandGroup>
@@ -377,33 +327,28 @@ export function Navbar() {
                       <CurrencyDollar className="h-4 w-4 text-muted-foreground" />
                       <span>{filter.label}</span>
                     </div>
-                    {activeFilters.prizeRange === filter.value && (
-                      <Check className="h-4 w-4 text-primary" />
-                    )}
+                    {activeFilters.prizeRange === filter.value && <Check className="h-4 w-4 text-primary" />}
                   </CommandItem>
                 ))}
               </CommandGroup>
 
               {activeFilterCount > 0 && (
                 <>
-              <CommandSeparator />
-              <CommandGroup>
-                <CommandItem
-                  onSelect={clearFilters}
-                        className="cursor-pointer text-muted-foreground hover:text-foreground"
-                >
-                  <span className="flex-1 text-center text-xs">
-                          Clear all filters ({activeFilterCount} active)
-                  </span>
-                </CommandItem>
-              </CommandGroup>
-            </>
+                  <CommandSeparator />
+                  <CommandGroup>
+                    <CommandItem
+                      onSelect={clearFilters}
+                      className="cursor-pointer text-muted-foreground hover:text-foreground"
+                    >
+                      <span className="flex-1 text-center text-xs">Clear all filters ({activeFilterCount} active)</span>
+                    </CommandItem>
+                  </CommandGroup>
+                </>
               )}
             </CommandList>
           </CommandDialog>
         </div>
 
-        {/* Profile Avatar - Extreme Right */}
         <div className="shrink-0 px-4 sm:px-6 lg:px-8">
           <Avatar className="h-8 w-8 cursor-pointer">
             <AvatarFallback className="bg-muted text-muted-foreground">
