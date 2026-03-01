@@ -57,6 +57,10 @@ func(h *HackathonHandler) SearchHackathons(w http.ResponseWriter, r *http.Reques
 	if hackathons == nil{
 		hackathons = []domain.Hackathon{}
 	}
+	
+	if filters.Limit <= 0 {
+		filters.Limit = 20
+	}
 
 	totalPages := (totalCount + filters.Limit - 1) / filters.Limit
 

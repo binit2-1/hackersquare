@@ -27,9 +27,7 @@ type UnstopRawEvents struct {
 	} `json:"organisation"`
 	AddressWithCountryLogo struct {
 		City    string `json:"city"`
-		Country struct {
-			Name string `json:"name"`
-		} `json:"country"`
+		Country any `json:"country"`
 	} `json:"address_with_country_logo"`
 	EndDate          time.Time `json:"end_date"`
 	RegnRequirements struct {
@@ -143,8 +141,22 @@ func UnstopAdapter(raw *UnstopRawEvents, rate float64) (title, host, location st
 	}
 
 	location = "Remote"
-	if raw.AddressWithCountryLogo.City != "" {
-		location = fmt.Sprintf("%s, %s", raw.AddressWithCountryLogo.City, raw.AddressWithCountryLogo.Country.Name)
+	city := raw.AddressWithCountryLogo.City
+	countryName := ""
+	if cStr, ok := raw.AddressWithCountryLogo.Country.(string); ok {
+		countryName = cStr
+	} else if cMap, ok := raw.AddressWithCountryLogo.Country.(map[string]any); ok {
+		if n, ok := cMap["name"].(string); ok {
+			countryName = n
+		}
+	}
+
+	if city != "" && countryName != "" {
+		location = fmt.Sprintf("%s, %s", city, countryName)
+	} else if city != "" {
+		location = city
+	} else if countryName != "" {
+		location = countryName
 	}
 
 	var totalCash float64
