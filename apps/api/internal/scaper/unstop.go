@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/binit2-1/hackersquare/apps/api/internal/utils"
-	"github.com/google/uuid"
 )
 
 type UnstopAPIResponse struct {
@@ -49,25 +48,14 @@ func RunUnstopScraper(db *sql.DB) error {
 	utils.Info("[Unstop] Starting scraper...")
 	rate := utils.GetExchangeRate()
 	indexURL := "https://unstop.com/api/public/opportunity/search-result?opportunity=hackathons&page=1"
-	indexData, err := fetchUnstopIndex(indexURL)
-	if err != nil {
-		return fmt.Errorf("failed to fetch Unstop index: %w", err)
-	}
 
-	hackathons := indexData.Data.Data
-	if len(hackathons) == 0 {
-		return fmt.Errorf("no hackathons found in Unstop index")
-	}
-
-	utils.Info("Found %d open hackathons", len(hackathons))
-
-	// Pagination
+	// Simplified pagination loop to prevent double-fetching Page 1
 	for indexURL != "" {
 		utils.Debug("Fetching page: %s", indexURL)
 
 		indexData, err := fetchUnstopIndex(indexURL)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to fetch Unstop page: %w", err)
 		}
 
 		pageHackathons := indexData.Data.Data
@@ -77,62 +65,45 @@ func RunUnstopScraper(db *sql.DB) error {
 
 		for i, hack := range pageHackathons {
 			utils.Debug("[%d/%d] Extracting: %s", i+1, len(pageHackathons), hack.SeoURL)
-			title, host, loc, prize, prizeUSD, start, end, applyURL, err := UnstopAdapter(&hack, rate)
-
+			
+			title, host, loc, prizeUSD, start, end, applyURL, err := UnstopAdapter(&hack, rate)
 			if err != nil {
 				utils.Error("Adapter failed for %s: %v", hack.SeoURL, err)
 				continue
 			}
 
-			utils.Debug("Transformed: %s | Host: %s | Loc: %s | Prize: %s | USD: %.2f", title, host, loc, prize, prizeUSD)
+			utils.Debug("Transformed: %s | Host: %s | Loc: %s | USD: %.2f", title, host, loc, prizeUSD)
 
-			var exists bool
-			checkQuery := `SELECT EXISTS(SELECT 1 FROM hackathons WHERE "applyUrl" = $1)`
-			err = db.QueryRowContext(context.Background(), checkQuery, applyURL).Scan(&exists)
+			// The V2 PostgreSQL Upsert Query
+			upsertQuery := `
+				INSERT INTO hackathons (title, host, location, prize_usd, start_date, end_date, apply_url)
+				VALUES ($1, $2, $3, $4, $5, $6, $7)
+				ON CONFLICT (apply_url) 
+				DO UPDATE SET 
+					title = EXCLUDED.title,
+					location = EXCLUDED.location,
+					prize_usd = EXCLUDED.prize_usd,
+					start_date = EXCLUDED.start_date,
+					end_date = EXCLUDED.end_date,
+					updated_at = NOW();
+			`
+
+			_, err = db.ExecContext(context.Background(), upsertQuery, title, host, loc, prizeUSD, start, end, applyURL)
 			if err != nil {
-				utils.Error("Database check failed for %s: %v", title, err)
+				utils.Error("Database upsert failed for %s: %v", title, err)
 				continue
 			}
 
-			// Skip if already in database
-			if exists {
-				utils.Debug("Skipping '%s': Already exists", title)
-				continue
-			}
-
-			// Insert new hackathon into db
-			newID := uuid.New().String()
-			tags := []string{"Unstop", "Upcoming"}
-			insertQuery := `INSERT INTO hackathons (id, title, host, location, prize, "prizeUSD", "startDate", "endDate", "applyUrl", tags, "updatedAt")
-						VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`
-			utils.Debug("Inserting: %s | Prize: %s | USD: %.2f", title, prize, prizeUSD)
-			_, err = db.ExecContext(context.Background(), insertQuery,
-				newID,
-				title,
-				host,
-				loc,
-				prize,
-				prizeUSD,
-				start,
-				end,
-				applyURL,
-				tags,
-				time.Now(),
-			)
-
-			if err != nil {
-				utils.Error("Database insert failed for %s: %v", title, err)
-				continue
-			}
-
-			utils.Debug("Successfully inserted '%s'", title)
-
-			// Rate limit
-			time.Sleep(1 * time.Second)
+			utils.Debug("Successfully saved/updated '%s'", title)
 		}
 
+		// Grab the next page URL (API returns empty string if no more pages)
 		indexURL = indexData.Data.NextPageURL
+		
+		// Rate limit between pages to avoid IP bans
+		time.Sleep(2 * time.Second)
 	}
+	
 	return nil
 }
 
@@ -162,9 +133,9 @@ func fetchUnstopIndex(url string) (*UnstopAPIResponse, error) {
 	return &data, nil
 }
 
-func UnstopAdapter(raw *UnstopRawEvents, rate float64) (title, host, location, prize string, prizeUSD float64, startDate, endDate time.Time, applyURL string, err error) {
-
-	//map basic fields
+// V2 Adapter - Drops the string prize and returns pure floats for Postgres
+func UnstopAdapter(raw *UnstopRawEvents, rate float64) (title, host, location string, prizeUSD float64, startDate, endDate time.Time, applyURL string, err error) {
+	// Map basic fields
 	title = raw.Title
 	host = "Unstop"
 	if raw.Organisation.Name != "" {
@@ -186,14 +157,6 @@ func UnstopAdapter(raw *UnstopRawEvents, rate float64) (title, host, location, p
 		}
 	}
 
-	if totalCash > 0 {
-		prize = fmt.Sprintf("%.2f %s", totalCash, currency)
-	} else if len(raw.Prizes) > 0 && raw.Prizes[0].Others != "" {
-		prize = raw.Prizes[0].Others + " and more"
-	} else {
-		prize = "TBA"
-	}
-
 	prizeUSD = 0.0
 	switch currency {
 	case "INR":
@@ -202,8 +165,7 @@ func UnstopAdapter(raw *UnstopRawEvents, rate float64) (title, host, location, p
 		prizeUSD = totalCash
 	}
 
-	applyURL = fmt.Sprintf("%s", raw.SeoURL)
+	applyURL = raw.SeoURL
 
-	return title, host, location, prize, prizeUSD, raw.RegnRequirements.StartRegnDt, raw.EndDate, applyURL, nil
-
+	return title, host, location, prizeUSD, raw.RegnRequirements.StartRegnDt, raw.EndDate, applyURL, nil
 }

@@ -20,6 +20,10 @@ db-migrate:
 # 2. Rolls back the very last migration (undo button)
 db-rollback:
 	@migrate -path ./migrations -database $(DB_URL) down 1
+	
+# Usage: make db-force version=2
+db-force:
+	@migrate -path ./migrations -database $(DB_URL) force $(version)
 
 # 3. Generates new blank up/down migration files
 # Usage: make db-create-migration name=add_users_table

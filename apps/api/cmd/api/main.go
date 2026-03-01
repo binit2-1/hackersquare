@@ -8,6 +8,7 @@ import (
 	"os"
 
 	"github.com/binit2-1/hackersquare/apps/api/internal/repository/pg"
+	scraper "github.com/binit2-1/hackersquare/apps/api/internal/scaper"
 	"github.com/binit2-1/hackersquare/apps/api/internal/server"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/joho/godotenv"
@@ -51,6 +52,26 @@ func main(){
 
 
 	fmt.Printf("Starting server on port %s\n", port)
+
+	//scrappers
+	//DEVFOLIO
+	go func() {
+		if err := scraper.RunDevfolioScraper(db); err != nil {
+			fmt.Printf("Scraper Error: %v\n", err)
+		}
+	}()
+	//MLH
+	go func() {
+		if err := scraper.RunMLHScraper(db); err != nil {
+			fmt.Printf("❌ MLH Scraper Error: %v\n", err)
+		}
+	}()
+	//UNSTOP
+	go func(){
+		if err := scraper.RunUnstopScraper(db); err != nil{
+			fmt.Printf("❌ Unstop Scraper Error: %v\n", err)
+		}
+	}()
 
 	if err := http.ListenAndServe(port, mux); err != nil {
 		log.Fatalf("FATAL: Server crashed: %v", err)

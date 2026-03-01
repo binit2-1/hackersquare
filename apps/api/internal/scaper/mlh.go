@@ -10,18 +10,9 @@ import (
 
 	"github.com/binit2-1/hackersquare/apps/api/internal/utils"
 	"github.com/gocolly/colly/v2"
-	"github.com/google/uuid"
 )
 
-type MLHRawEvent struct {
-	Name        string
-	DetailURL   string
-	Location    string
-	StartDate   string
-	EndDate     string
-	Description string
-}
-
+// RunMLHScraper fetches hackathons from the MLH season page and saves them
 func RunMLHScraper(db *sql.DB) error {
 	utils.Info("[MLH] Starting crawl")
 	c := colly.NewCollector(
@@ -37,14 +28,11 @@ func RunMLHScraper(db *sql.DB) error {
 
 		utils.Debug("Scraped: %s | Loc: %s | URL: %s", name, location, applyURL)
 
-		// Get raw description
-		desc := ScrapeExternalDescription(applyURL)
-
 		// Parse dates
 		start, end := ParseMLHDates(dateText)
 
-		// Save (deduplicated)
-		SaveToDB(db, name, location, applyURL, desc, start, end)
+		// Directly pass to the Upsert function (No description needed anymore)
+		SaveToDB(db, name, location, applyURL, start, end)
 	})
 
 	c.Limit(&colly.LimitRule{DomainGlob: "*mlh.io*", Delay: 2 * time.Second})
@@ -52,31 +40,9 @@ func RunMLHScraper(db *sql.DB) error {
 	return c.Visit("https://mlh.io/seasons/2026/events")
 }
 
-// ScrapeExternalDescription visits the hackathon's own site to get raw text
-func ScrapeExternalDescription(url string) string {
-	var bodyText string
-	d := colly.NewCollector(
-		colly.UserAgent("Mozilla/5.0..."),
-	)
-	// We set a 5-second timeout so one slow website doesn't hang your whole scraper
-	d.SetRequestTimeout(5 * time.Second)
-
-	d.OnHTML("body", func(e *colly.HTMLElement) {
-		// Just grab the first 1000 characters of text to keep things light
-		text := strings.TrimSpace(e.Text)
-		if len(text) > 1000 {
-			bodyText = text[:1000]
-		} else {
-			bodyText = text
-		}
-	})
-
-	d.Visit(url)
-	return bodyText
-}
-
+// ParseMLHDates converts MLH's string dates (e.g., "FEB 13 - 15") to time.Time
 func ParseMLHDates(dateStr string) (time.Time, time.Time) {
-	year := 2026 // Hardcoded based on the season you are scraping
+	year := 2026 // Target season
 
 	months := map[string]time.Month{
 		"JAN": time.January, "FEB": time.February, "MAR": time.March,
@@ -109,23 +75,25 @@ func ParseMLHDates(dateStr string) (time.Time, time.Time) {
 	return startDate, endDate
 }
 
-func SaveToDB(db *sql.DB, title, loc, url, desc string, start, end time.Time) {
-	var exists bool
-	checkQuery := `SELECT EXISTS(SELECT 1 FROM hackathons WHERE "applyUrl" = $1)`
-	db.QueryRowContext(context.Background(), checkQuery, url).Scan(&exists)
-
-	if exists {
-		utils.Debug("Skipping %s: Already exists", title)
-		return
-	}
-
+// SaveToDB uses PostgreSQL ON CONFLICT to efficiently Upsert the hackathon
+func SaveToDB(db *sql.DB, title, loc, applyURL string, start, end time.Time) {
 	query := `
-		INSERT INTO hackathons (id, title, host, location, prize, "startDate", "endDate", "applyUrl", tags, "updatedAt")
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+		INSERT INTO hackathons (title, host, location, prize_usd, start_date, end_date, apply_url)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
+		ON CONFLICT (apply_url) 
+		DO UPDATE SET 
+			title = EXCLUDED.title,
+			location = EXCLUDED.location,
+			start_date = EXCLUDED.start_date,
+			end_date = EXCLUDED.end_date,
+			updated_at = NOW();
 	`
-	newID := uuid.New().String()
-	_, err := db.ExecContext(context.Background(), query, newID, title, "MLH", loc, "TBA", start, end, url, []string{"MLH", "Student"}, time.Now())
-	if err == nil {
-		utils.Debug("Saved: %s", title)
+	
+	// MLH doesn't reliably list exact prize amounts on the index page, so we default to 0.0
+	_, err := db.ExecContext(context.Background(), query, title, "MLH", loc, 0.0, start, end, applyURL)
+	if err != nil {
+		utils.Error("Database upsert failed for %s: %v", title, err)
+	} else {
+		utils.Debug("Saved/Updated: %s", title)
 	}
 }
