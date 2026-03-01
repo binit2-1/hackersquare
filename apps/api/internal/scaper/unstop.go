@@ -20,7 +20,7 @@ type UnstopAPIResponse struct {
 }
 
 type UnstopRawEvents struct {
-	Title        string `json:"title"`
+	Title        string `json:"title,omitempty"`
 	SeoURL       string `json:"seo_url"`
 	Organisation struct {
 		Name string `json:"name"`
