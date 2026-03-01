@@ -2,12 +2,12 @@ package scraper
 
 import (
 	"context"
+	"database/sql"
 	"regexp"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/binit2-1/hackersquare/apps/api/internal/database"
 	"github.com/binit2-1/hackersquare/apps/api/internal/utils"
 	"github.com/gocolly/colly/v2"
 	"github.com/google/uuid"
@@ -22,7 +22,7 @@ type MLHRawEvent struct {
 	Description string
 }
 
-func RunMLHScraper(db *database.Service) error {
+func RunMLHScraper(db *sql.DB) error {
 	utils.Info("[MLH] Starting crawl")
 	c := colly.NewCollector(
 		colly.UserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"),
@@ -109,10 +109,10 @@ func ParseMLHDates(dateStr string) (time.Time, time.Time) {
 	return startDate, endDate
 }
 
-func SaveToDB(db *database.Service, title, loc, url, desc string, start, end time.Time) {
+func SaveToDB(db *sql.DB, title, loc, url, desc string, start, end time.Time) {
 	var exists bool
 	checkQuery := `SELECT EXISTS(SELECT 1 FROM hackathons WHERE "applyUrl" = $1)`
-	db.Pool.QueryRow(context.Background(), checkQuery, url).Scan(&exists)
+	db.QueryRowContext(context.Background(), checkQuery, url).Scan(&exists)
 
 	if exists {
 		utils.Debug("Skipping %s: Already exists", title)
@@ -124,7 +124,7 @@ func SaveToDB(db *database.Service, title, loc, url, desc string, start, end tim
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 	`
 	newID := uuid.New().String()
-	_, err := db.Pool.Exec(context.Background(), query, newID, title, "MLH", loc, "TBA", start, end, url, []string{"MLH", "Student"}, time.Now())
+	_, err := db.ExecContext(context.Background(), query, newID, title, "MLH", loc, "TBA", start, end, url, []string{"MLH", "Student"}, time.Now())
 	if err == nil {
 		utils.Debug("Saved: %s", title)
 	}

@@ -15,6 +15,16 @@ type Hackathon struct {
 	Tags      []string `json:"tags"`
 }
 
-type HackathonRepository interface {
+type SearchFilters struct {
+    Query    string
+    Location string
+    Status   string
+    MinPrize float64
+    Page     int
+    Limit    int
+}
 
+
+type HackathonRepository interface {
+	SearchHackathons(filters SearchFilters) ([]Hackathon, int, error)
 }

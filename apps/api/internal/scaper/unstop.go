@@ -2,12 +2,12 @@ package scraper
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"time"
 
-	"github.com/binit2-1/hackersquare/apps/api/internal/database"
 	"github.com/binit2-1/hackersquare/apps/api/internal/utils"
 	"github.com/google/uuid"
 )
@@ -45,7 +45,7 @@ type UnstopPrize struct {
 	Others       string  `json:"others"`
 }
 
-func RunUnstopScraper(db *database.Service) error {
+func RunUnstopScraper(db *sql.DB) error {
 	utils.Info("[Unstop] Starting scraper...")
 	rate := utils.GetExchangeRate()
 	indexURL := "https://unstop.com/api/public/opportunity/search-result?opportunity=hackathons&page=1"
@@ -88,7 +88,7 @@ func RunUnstopScraper(db *database.Service) error {
 
 			var exists bool
 			checkQuery := `SELECT EXISTS(SELECT 1 FROM hackathons WHERE "applyUrl" = $1)`
-			err = db.Pool.QueryRow(context.Background(), checkQuery, applyURL).Scan(&exists)
+			err = db.QueryRowContext(context.Background(), checkQuery, applyURL).Scan(&exists)
 			if err != nil {
 				utils.Error("Database check failed for %s: %v", title, err)
 				continue
@@ -106,7 +106,7 @@ func RunUnstopScraper(db *database.Service) error {
 			insertQuery := `INSERT INTO hackathons (id, title, host, location, prize, "prizeUSD", "startDate", "endDate", "applyUrl", tags, "updatedAt")
 						VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`
 			utils.Debug("Inserting: %s | Prize: %s | USD: %.2f", title, prize, prizeUSD)
-			_, err = db.Pool.Exec(context.Background(), insertQuery,
+			_, err = db.ExecContext(context.Background(), insertQuery,
 				newID,
 				title,
 				host,

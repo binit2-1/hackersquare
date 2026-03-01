@@ -2,6 +2,7 @@ package scraper
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -9,9 +10,7 @@ import (
 	"regexp"
 	"time"
 
-	"github.com/binit2-1/hackersquare/apps/api/internal/database"
 	"github.com/binit2-1/hackersquare/apps/api/internal/utils"
-	"github.com/google/uuid"
 )
 
 // DevfolioIndexResponse represents the JSON structure from the hackathons list API.
@@ -62,7 +61,7 @@ type DevfolioPrizeJSON struct {
 }
 
 // RunDevfolioScraper fetches hackathons from Devfolio and saves them to the database
-func RunDevfolioScraper(db *database.Service) error {
+func RunDevfolioScraper(db *sql.DB) error {
 	utils.Info("[Devfolio] Booting up scraper...")
 	rate := utils.GetExchangeRate()
 
@@ -100,58 +99,44 @@ func RunDevfolioScraper(db *database.Service) error {
 			continue
 		}
 
-		descLength := len(detailData.Props.PageProps.Hackathon.Desc)
-		hackName := detailData.Props.PageProps.Hackathon.Name
-		utils.Debug("Extracted %d bytes of markdown description for '%s'", descLength, hackName)
-
 		actualPrize, err := fetchPrize(hack.Slug, buildID)
 		if err != nil {
 			utils.Debug("Prize fetch failed for %s, defaulting to TBA", hack.Slug)
 		}
 
-		title, host, loc, prize, prizeUSD, start, end, applyURL, err := DevfolioAdapter(detailData, actualPrize, rate)
+		title, host, loc, _, prizeUSD, start, end, applyURL, err := DevfolioAdapter(detailData, actualPrize, rate)
 		if err != nil {
 			utils.Error("Adapter failed for %s: %v", hack.Slug, err)
 			continue
 		}
 
-		utils.Debug("Transformed: %s | Host: %s | Loc: %s | Prize: %s | Prize USD: %.2f | Starts: %s | Ends: %s | URL: %s", title, host, loc, prize, prizeUSD, start.Format("Jan 02, 2006"), end.Format("Jan 02, 2006"), applyURL)
+		utils.Debug("Transformed: %s | Host: %s | Prize USD: %.2f | Starts: %s | URL: %s", title, host, prizeUSD, start.Format("Jan 02, 2006"), applyURL)
 
-		var exists bool
-		checkQuery := `SELECT EXISTS(SELECT 1 FROM hackathons WHERE "applyUrl" = $1)`
-
-		err = db.Pool.QueryRow(context.Background(), checkQuery, applyURL).Scan(&exists)
-		if err != nil {
-			utils.Error("Database check failed for %s: %v", title, err)
-			continue
-		}
-
-		// Skip if already in database
-		if exists {
-			utils.Debug("Skipping '%s': Already exists in database", title)
-			continue
-		}
-
-		// Insert new hackathon
-		newID := uuid.New().String()
-		tags := []string{"Devfolio", "Upcoming"}
-
-		insertQuery := `
-			INSERT INTO hackathons (id, title, host, location, prize, "prizeUSD", "startDate", "endDate", "applyUrl", tags, "updatedAt")
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+		// The PostgreSQL Upsert Query
+		upsertQuery := `
+			INSERT INTO hackathons (title, host, location, prize_usd, start_date, end_date, apply_url)
+			VALUES ($1, $2, $3, $4, $5, $6, $7)
+			ON CONFLICT (apply_url) 
+			DO UPDATE SET 
+				title = EXCLUDED.title,
+				location = EXCLUDED.location,
+				prize_usd = EXCLUDED.prize_usd,
+				start_date = EXCLUDED.start_date,
+				end_date = EXCLUDED.end_date,
+				updated_at = NOW();
 		`
 
-		_, err = db.Pool.Exec(context.Background(), insertQuery, newID, title, host, loc, prize, prizeUSD, start, end, applyURL, tags, time.Now())
+		// Execute the query using standard database/sql
+		_, err = db.ExecContext(context.Background(), upsertQuery, title, host, loc, prizeUSD, start, end, applyURL)
 		if err != nil {
-			utils.Error("Database insert failed for %s: %v", title, err)
+			utils.Error("Database upsert failed for %s: %v", title, err)
 			continue
 		}
 
-		utils.Debug("Successfully saved '%s' to PostgreSQL", title)
+		utils.Debug("Successfully saved/updated '%s' in PostgreSQL", title)
 
 		// Rate limiting
 		time.Sleep(1 * time.Second)
-
 	}
 
 	return nil
