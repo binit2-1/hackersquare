@@ -19,7 +19,7 @@ func NewPostgreEventRepo(db *sql.DB) domain.HackathonRepository {
 }
 
 func (h *PostgresEventRepo) SearchHackathons(filters domain.SearchFilters) ([]domain.Hackathon, int, error) {
-	query := `SELECT id, title, host, location, prize_usd, start_date, end_date, COUNT(*) OVER() FROM hackathons WHERE 1=1`
+	query := `SELECT id, title, host, location, prize_usd, start_date, end_date, apply_url, COUNT(*) OVER() FROM hackathons WHERE 1=1`
 	var conditions []string
 	var args []any
 	argID := 1
@@ -81,6 +81,7 @@ func (h *PostgresEventRepo) SearchHackathons(filters domain.SearchFilters) ([]do
 			&event.PrizeUSD,
 			&event.StartDate,
 			&event.EndDate,
+			&event.ApplyURL,
 			&totalCount,
 		)
 		if err != nil {

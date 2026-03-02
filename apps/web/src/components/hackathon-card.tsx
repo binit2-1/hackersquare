@@ -68,7 +68,7 @@ export function HackathonCard({ hackathon }: HackathonCardProps) {
       <CardContent className="flex flex-col gap-2.5 px-5 pb-4 text-sm flex-1">
         <div className="flex items-center gap-2 text-muted-foreground">
           <Calendar className="size-3.5 shrink-0" />
-          <span>{formatDateRange(hackathon.startDate, hackathon.endDate)}</span>
+          <span>{formatDateRange(hackathon.start_date, hackathon.end_date)}</span>
         </div>
 
         <div className="flex items-center gap-2 text-muted-foreground">
@@ -78,7 +78,7 @@ export function HackathonCard({ hackathon }: HackathonCardProps) {
 
         <div className="flex items-center gap-2 font-medium">
           <Trophy className="size-3.5 shrink-0 text-amber-500" />
-          <span>{hackathon.prize}</span>
+          <span>{hackathon.prize_usd}</span>
         </div>
 
         <div className="flex flex-wrap gap-1.5 pt-1">
@@ -93,7 +93,7 @@ export function HackathonCard({ hackathon }: HackathonCardProps) {
 
       <CardFooter className="px-5 pb-5 pt-0">
         <Button asChild className="w-full" size="sm">
-          <a href={hackathon.applyUrl} target="_blank" rel="noopener noreferrer">
+          <a href={hackathon.apply_url} target="_blank" rel="noopener noreferrer">
             Apply Now
           </a>
         </Button>

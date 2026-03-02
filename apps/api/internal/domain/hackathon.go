@@ -9,7 +9,7 @@ type Hackathon struct {
 	Location  string    `json:"location"`
 	PrizeUSD  *float64  `json:"prize_usd"`
 	StartDate time.Time `json:"start_date"`
-	EndDate   time.Time `json:"endate"`
+	EndDate   time.Time `json:"end_date"`
 	ApplyURL  string    `json:"apply_url"`
 	Tags      []string  `json:"tags"`
 }

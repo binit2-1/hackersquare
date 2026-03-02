@@ -3,11 +3,11 @@ export interface HackathonProps {
   title: string;
   host: string;
   location: string;
-  prize: string;
-  startDate: string;
-  endDate: string;
-  applyUrl: string;
-  tags: string[];
+  prize_usd: number;
+  start_date: string;
+  end_date: string;
+  apply_url: string;
+  tags?: string[];
   isBookmarked: boolean;
 }
 
