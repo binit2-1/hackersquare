@@ -117,70 +117,31 @@ export function Navbar() {
     return () => document.removeEventListener("keydown", down);
   }, []);
 
-  // Fetch hackathons
-  // React.useEffect(() => {
-  //   const fetchHackathons = async () => {
-  //     setIsLoading(true);
-  //     try {
-  //       const response = await fetch("http://localhost:8080/api/hackathons");
-  //       if (response.ok) {
-  //         const data = await response.json();
-  //         setHackathons(data);
-  //       }
-  //     } catch (error) {
-  //       console.error("Failed to fetch hackathons:", error);
-  //     } finally {
-  //       setIsLoading(false);
-  //     }
-  //   };
-  //   if (searchOpen) {
-  //     fetchHackathons();
-  //   }
-  // }, [searchOpen]);
-
-  // // Debounce search query for better performance
-  // React.useEffect(() => {
-  //   const timer = setTimeout(() => {
-  //     setDebouncedQuery(searchQuery);
-  //   }, 150);
-  //   return () => clearTimeout(timer);
-  // }, [searchQuery]);
-
-  // // Memoized filtered results for performance
-  // const filteredHackathons = React.useMemo(() => {
-  //   if (!debouncedQuery.trim()) return hackathons.slice(0, 10);
-  //   const query = debouncedQuery.toLowerCase();
-  //   return hackathons
-  //     .filter(
-  //       (h) =>
-  //         h.title.toLowerCase().includes(query) ||
-  //         h.host.toLowerCase().includes(query) ||
-  //         h.tags.some((tag) => tag.toLowerCase().includes(query)),
-  //     )
-  //     .slice(0, 10);
-  // }, [debouncedQuery, hackathons]);
-
   // Count active filters
   const activeFilterCount = React.useMemo(() => {
     return Object.values(activeFilters).filter(Boolean).length;
   }, [activeFilters]);
 
   const handleFilterSelect = (type: keyof FilterState, value: string | null) => {
-    setActiveFilters((prev) => {
-      const newState = { ...prev, [type]: prev[type] === value ? null : value };
-      
-      const current = new URLSearchParams(Array.from(searchParams.entries()));
-      if (newState[type]) {
-        current.set(type, newState[type] as string);
-      } else {
-        current.delete(type);
-      }
-      
-      const search = current.toString();
-      router.push(`${pathname}${search ? `?${search}` : ""}`);
-      
-      return newState;
-    });
+
+    const newValue = activeFilters[type] === value ? null : value;
+
+    setActiveFilters((prev) => ({...prev, [type] : newValue}));
+    
+    const current = new URLSearchParams(Array.from(searchParams.entries()));
+
+    if (newValue){
+      current.set(type, newValue);
+    } else {
+      current.delete(type);
+    }
+
+    current.set("page", "1");
+
+    const search =  current.toString();
+
+
+    router.push(`/search${search ? `?${search}` : ""}`);
   };
 
   const clearFilters = () => {
