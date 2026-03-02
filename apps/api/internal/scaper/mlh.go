@@ -18,7 +18,14 @@ func RunMLHScraper(db *sql.DB) error {
 	c := colly.NewCollector(
 		colly.UserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"),
 	)
+	c.SetRequestTimeout(60 * time.Second)
 
+	c.OnRequest(func(r *colly.Request) {
+		r.Headers.Set("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8")
+		r.Headers.Set("Accept-Language", "en-US,en;q=0.9")
+	})
+
+	
 	// Select event items
 	c.OnHTML("a[itemtype='https://schema.org/Event']", func(e *colly.HTMLElement) {
 		name := e.ChildText("[itemprop='name']")

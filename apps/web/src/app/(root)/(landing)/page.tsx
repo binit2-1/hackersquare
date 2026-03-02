@@ -6,8 +6,14 @@ import { useRouter } from "next/navigation";
 const page = () => {
   const router = useRouter();
   const handleSubmit = (value?: string | React.SyntheticEvent) => {
+    const params = new URLSearchParams();
+    if (typeof value === "string") {
+      params.append("q", value.trim());
+    }
+    
+
     console.log("Submitting search...", value);
-    router.push("/search");
+    router.push(`/search?${params.toString()}`);
   };
   return (
     <div className="w-screen h-screen flex justify-center items-center bg-background text-foreground">
