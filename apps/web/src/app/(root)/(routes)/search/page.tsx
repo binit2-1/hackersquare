@@ -1,10 +1,13 @@
 import { HackathonCard } from "@/components/hackathon-card";
-import { HackathonProps, SearchResponse } from "@/models/hackathon";
+import {  SearchResponse } from "@/models/hackathon";
 
 const fetchHackathons = async (
   queryString: string,
 ): Promise<SearchResponse> => {
-  const response = await fetch("http://localhost:8080/v1/search", {
+  const url = queryString 
+    ? `http://localhost:8080/v1/search?${queryString}`
+    : `http://localhost:8080/v1/search`;
+  const response = await fetch(url, {
     cache: "no-store",
   });
   if (!response.ok) {
@@ -17,10 +20,11 @@ const fetchHackathons = async (
 const SearchPage = async ({
   searchParams,
 }: {
-  searchParams: { [key: string]: string | string[] | undefined };
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) => {
+  const resolvedSearchParams = await searchParams;
   const params = new URLSearchParams();
-  for (const [key, value] of Object.entries(searchParams)) {
+  for (const [key, value] of Object.entries(resolvedSearchParams)) {
     if (value) params.append(key, String(value));
   }
 
