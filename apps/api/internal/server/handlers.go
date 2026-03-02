@@ -2,6 +2,7 @@ package server
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
 
@@ -26,17 +27,15 @@ func(h *HackathonHandler) SearchHackathons(w http.ResponseWriter, r *http.Reques
 	filters:= domain.SearchFilters{
 		Query: queryValues.Get("q"),
 		Location: queryValues.Get("location"),
+		PrizeRange: queryValues.Get("prizeRange"),
 		Status: queryValues.Get("status"),
+		Page: 1,
+		Limit: 20,
 	}
 
-	if minPrizeStr := queryValues.Get("minPrize"); minPrizeStr != ""{
-		if val, err := strconv.ParseFloat(minPrizeStr, 64); err == nil{
-			filters.MinPrize = val
-		}
-	}
 
-	if pageStr := queryValues.Get("page"); pageStr != ""{
-		if val, err := strconv.Atoi(pageStr); err == nil{
+	if pageStr := queryValues.Get("page"); pageStr != "" {
+		if val, err := strconv.Atoi(pageStr); err == nil && val > 0 {
 			filters.Page = val
 		}
 	}
@@ -49,7 +48,9 @@ func(h *HackathonHandler) SearchHackathons(w http.ResponseWriter, r *http.Reques
 
 
 	hackathons, totalCount, err := h.Repo.SearchHackathons(filters)
-	if err != nil{
+	if err != nil {
+		fmt.Printf("❌ Database Search Error: %v\n", err)
+
 		http.Error(w, "Failed to search hackathons", http.StatusInternalServerError)
 		return
 	}

@@ -3,6 +3,7 @@ package pg
 import (
 	"database/sql"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/binit2-1/hackersquare/apps/api/internal/domain"
@@ -19,7 +20,8 @@ func NewPostgreEventRepo(db *sql.DB) domain.HackathonRepository {
 }
 
 func (h *PostgresEventRepo) SearchHackathons(filters domain.SearchFilters) ([]domain.Hackathon, int, error) {
-	query := `SELECT id, title, host, location, prize_usd, start_date, end_date, apply_url, COUNT(*) OVER() FROM hackathons WHERE 1=1`
+	query := `SELECT id, title, COALESCE(host, 'Unknown Host'), COALESCE(location, 'TBA'), COALESCE(prize_usd, 0.0), start_date, end_date, COALESCE(apply_url, ''), COUNT(*) OVER() FROM hackathons WHERE 1=1`
+
 	var conditions []string
 	var args []any
 	argID := 1
@@ -30,21 +32,55 @@ func (h *PostgresEventRepo) SearchHackathons(filters domain.SearchFilters) ([]do
 		argID++
 	}
 
-	if filters.Location != "" {
-		conditions = append(conditions, fmt.Sprintf("location ILIKE $%d", argID))
-		args = append(args, "%"+filters.Location+"%")
-		argID++
+	if filters.Status != "" {
+		switch filters.Status {
+		case "upcoming":
+			conditions = append(conditions, "start_date > NOW()")
+		case "ongoing":
+			conditions = append(conditions, "start_date <= NOW() AND end_date >= NOW()")
+		case "past":
+			conditions = append(conditions, "end_date < NOW()")
+		}
 	}
 
-	if filters.MinPrize > 0 {
-		conditions = append(conditions, fmt.Sprintf("prize_usd >= $%d", argID))
-		args = append(args, filters.MinPrize)
-		argID++
+	if filters.Location != "" {
+		switch filters.Location {
+		case "online":
+			conditions = append(conditions, "(location ILIKE '%remote%' OR location ILIKE '%online%')")
+		case "in-person":
+			conditions = append(conditions, "(location NOT ILIKE '%remote%' AND location NOT ILIKE '%online%')")
+		}
 	}
+
+	if filters.PrizeRange != "" {
+		if strings.HasSuffix(filters.PrizeRange, "+") {
+			minStr := strings.TrimSuffix(filters.PrizeRange, "+")
+			if minPrize, err := strconv.ParseFloat(minStr, 64); err == nil {
+				conditions = append(conditions, fmt.Sprintf("prize_usd >= $%d", argID))
+				args = append(args, minPrize)
+				argID++
+			}
+		} else {
+			parts := strings.Split(filters.PrizeRange, "-")
+			if len(parts) == 2 {
+				minPrize, err1 := strconv.ParseFloat(parts[0], 64)
+				maxPrize, err2 := strconv.ParseFloat(parts[1], 64)
+
+				if err1 == nil && err2 == nil {
+					conditions = append(conditions, fmt.Sprintf("prize_usd >= $%d AND prize_usd <= $%d", argID, argID+1))
+					args = append(args, minPrize, maxPrize)
+					argID += 2
+				}
+			}
+		}
+	}
+
+
 
 	if len(conditions) > 0 {
 		query += " AND " + strings.Join(conditions, " AND ")
 	}
+
 
 	limit := filters.Limit
 	if limit <= 0 {
@@ -56,11 +92,11 @@ func (h *PostgresEventRepo) SearchHackathons(filters domain.SearchFilters) ([]do
 		page = 1
 	}
 
-	offset := (page - 1) * limit
+	offset := (filters.Page - 1) * filters.Limit
 
 	//append ORDER BY, LIMIT and OFFSET
 	query += fmt.Sprintf(" ORDER BY start_date DESC LIMIT $%d OFFSET $%d", argID, argID+1)
-	args = append(args, limit, offset)
+	args = append(args, filters.Limit, offset)
 
 	rows, err := h.db.Query(query, args...)
 	if err != nil {

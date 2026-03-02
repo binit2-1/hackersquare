@@ -15,12 +15,12 @@ type Hackathon struct {
 }
 
 type SearchFilters struct {
-	Query    string
-	Location string
-	Status   string
-	MinPrize float64
-	Page     int
-	Limit    int
+	Query      string
+	Location   string
+	Status     string
+	PrizeRange string
+	Page       int
+	Limit      int
 }
 
 type HackathonRepository interface {
