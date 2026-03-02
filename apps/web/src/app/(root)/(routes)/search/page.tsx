@@ -33,7 +33,7 @@ const SearchPage = async ({
   );
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className=" min-h-screen max-w-196.5">
       <div className="mx-auto px-4 py-8 max-w-7xl">
         <p className="mb-4 text-sm text-gray-500">
           Showing {hackathons.length} of {metadata.totalRecords} hackathons

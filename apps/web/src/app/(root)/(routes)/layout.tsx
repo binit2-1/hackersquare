@@ -9,7 +9,7 @@ export default function RoutesLayout({
   return (
     <>
       <Navbar />
-      {children}
+      <div className="mx-auto min-h-screen max-w-196.5">{children}</div>
     </>
   );
 }
