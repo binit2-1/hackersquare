@@ -34,6 +34,7 @@ import {
   ArrowRight,
 } from "@phosphor-icons/react/dist/ssr";
 import * as React from "react";
+import AuthModal from "@/components/auth-modal";
 
 
 interface FilterState {
@@ -86,6 +87,8 @@ export function Navbar() {
   // default to true so button is visible by default (hardcoded fallback)
   const [showAuthButton, setShowAuthButton] = React.useState(true);
   const [searchQuery, setSearchQuery] = React.useState("");
+  const [showAuthModal, setShowAuthModal] = React.useState(false);
+  const [authInitialTab, setAuthInitialTab] = React.useState<"signin" | "signup">("signin");
   const [debouncedQuery, setDebouncedQuery] = React.useState("");
   const [isLoading, setIsLoading] = React.useState(false);
   const [hackathons, setHackathons] = React.useState<HackathonProps[]>([]);
@@ -347,11 +350,11 @@ export function Navbar() {
         <div className="shrink-0 flex flex-row gap-4 px-4 sm:px-6 lg:px-8 items-center">
           {showAuthButton ? (
             <Button
-              className="absolute inline-flex right-20 min-w-36 rounded-4xl px-px justify-center"
+              className="inline-flex min-w-36 rounded-4xl px-4 justify-center"
               size="sm"
-              onClick={() => router.push("/signin")}
+              onClick={() => setShowAuthModal(true)}
             >
-              Sign In/Sign Up
+              Sign In / Sign Up
             </Button>
           ) : null}
 
@@ -367,8 +370,8 @@ export function Navbar() {
               </DropdownMenuTrigger>
 
               <DropdownMenuContent align="end" className="w-40">
-                <DropdownMenuItem onSelect={() => router.push("/signin")}>Sign In</DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => router.push("/signup")}>Sign Up</DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => { setAuthInitialTab("signin"); setShowAuthModal(true); }}>Sign In</DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => { setAuthInitialTab("signup"); setShowAuthModal(true); }}>Sign Up</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (
@@ -380,6 +383,7 @@ export function Navbar() {
           )}
         </div>
       </div>
+      <AuthModal open={showAuthModal} onOpenChange={setShowAuthModal} initialTab={authInitialTab} />
     </header>
   );
 }
