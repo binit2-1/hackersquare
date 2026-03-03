@@ -78,7 +78,7 @@ export function HackathonCard({ hackathon }: HackathonCardProps) {
 
         <div className="flex items-center gap-2 font-medium">
           <Trophy className="size-3.5 shrink-0 text-amber-500" />
-          <span>{hackathon.prize_usd}</span>
+          <span>{`$${hackathon.prize_usd.toLocaleString()}`}</span>
         </div>
 
         <div className="flex flex-wrap gap-1.5 pt-1">

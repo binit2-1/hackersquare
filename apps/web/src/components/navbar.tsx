@@ -4,6 +4,12 @@ import { HackathonProps } from "@/models/hackathon";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "@/components/ui/dropdown-menu";
+import {
   CommandDialog,
   CommandInput,
   CommandList,
@@ -77,6 +83,8 @@ export function Navbar() {
   const [scrolled, setScrolled] = React.useState(false);
   const [filterOpen, setFilterOpen] = React.useState(false);
   const [searchOpen, setSearchOpen] = React.useState(false);
+  // default to true so button is visible by default (hardcoded fallback)
+  const [showAuthButton, setShowAuthButton] = React.useState(true);
   const [searchQuery, setSearchQuery] = React.useState("");
   const [debouncedQuery, setDebouncedQuery] = React.useState("");
   const [isLoading, setIsLoading] = React.useState(false);
@@ -97,6 +105,32 @@ export function Navbar() {
 
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  // Show auth button until 1300px width; enable avatar dropdown only when hidden
+  React.useEffect(() => {
+    if (typeof window === "undefined") return;
+    const m = window.matchMedia("(min-width: 1300px)");
+    const handler = (e: any) => setShowAuthButton(e.matches);
+    // set initial value from media query
+    setShowAuthButton(m.matches);
+    // prefer addEventListener if available
+    if (m.addEventListener) {
+      m.addEventListener("change", handler);
+    } else {
+      // older browsers
+      // @ts-ignore
+      m.addListener(handler);
+    }
+
+    return () => {
+      if (m.removeEventListener) {
+        m.removeEventListener("change", handler);
+      } else {
+        // @ts-ignore
+        m.removeListener(handler);
+      }
+    };
   }, []);
 
   // Keyboard shortcuts: Cmd/Ctrl+K for search, Cmd/Ctrl+F for filter
@@ -310,12 +344,40 @@ export function Navbar() {
           </CommandDialog>
         </div>
 
-        <div className="shrink-0 px-4 sm:px-6 lg:px-8">
-          <Avatar className="h-8 w-8 cursor-pointer">
-            <AvatarFallback className="bg-muted text-muted-foreground">
-              <User className="h-4 w-4" weight="regular" />
-            </AvatarFallback>
-          </Avatar>
+        <div className="shrink-0 flex flex-row gap-4 px-4 sm:px-6 lg:px-8 items-center">
+          {showAuthButton ? (
+            <Button
+              className="absolute inline-flex right-20 min-w-36 rounded-4xl px-px justify-center"
+              size="sm"
+              onClick={() => router.push("/signin")}
+            >
+              Sign In/Sign Up
+            </Button>
+          ) : null}
+
+          {/* Avatar: only act as a dropdown trigger when auth button is hidden (mobile/smaller screens) */}
+          {!showAuthButton ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Avatar className="h-8 w-8 cursor-pointer">
+                  <AvatarFallback className="bg-muted text-muted-foreground">
+                    <User className="h-4 w-4" weight="regular" />
+                  </AvatarFallback>
+                </Avatar>
+              </DropdownMenuTrigger>
+
+              <DropdownMenuContent align="end" className="w-40">
+                <DropdownMenuItem onSelect={() => router.push("/signin")}>Sign In</DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => router.push("/signup")}>Sign Up</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            <Avatar className="h-8 w-8 cursor-default">
+              <AvatarFallback className="bg-muted text-muted-foreground">
+                <User className="h-4 w-4" weight="regular" />
+              </AvatarFallback>
+            </Avatar>
+          )}
         </div>
       </div>
     </header>
