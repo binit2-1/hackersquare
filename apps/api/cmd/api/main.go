@@ -43,11 +43,14 @@ func main(){
 
 
 	pgRepo := pg.NewPostgreEventRepo(db)
+	authRepo := pg.NewPostgreUserRepo(db)
 	hackathonHandler := server.NewHackathonHandler(pgRepo)
+	authHandler := server.NewAuthHandler(authRepo)
 	
 
 	mux := http.NewServeMux()
 
+	mux.HandleFunc("POST /v1/auth/login", authHandler.Login)
 	mux.HandleFunc("GET /v1/search", hackathonHandler.SearchHackathons)
 
 

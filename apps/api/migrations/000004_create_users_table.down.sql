@@ -1,0 +1,2 @@
+DROP INDEX IF NOT EXISTS idx_users_email;
+DROP TABLE IF NOT EXISTS users;
