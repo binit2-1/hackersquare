@@ -51,6 +51,7 @@ func main(){
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("POST /v1/auth/login", authHandler.Login)
+	mux.HandleFunc("POST /v1/auth/register", authHandler.Register)
 	mux.HandleFunc("GET /v1/search", hackathonHandler.SearchHackathons)
 
 
