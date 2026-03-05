@@ -41,10 +41,12 @@ func main(){
 
 	defer db.Close()
 
-
+	// Initialize repositories 
 	pgRepo := pg.NewPostgreEventRepo(db)
 	authRepo := pg.NewPostgreUserRepo(db)
 	bookmarkRepo := pg.NewPostgresBookmarkRepo(db)
+
+	// Initialize handlers
 	hackathonHandler := server.NewHackathonHandler(pgRepo)
 	bookmarkHandler := server.NewBookmarkHandler(bookmarkRepo)
 	authHandler := server.NewAuthHandler(authRepo)
