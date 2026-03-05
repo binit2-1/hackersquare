@@ -44,16 +44,23 @@ func main(){
 
 	pgRepo := pg.NewPostgreEventRepo(db)
 	authRepo := pg.NewPostgreUserRepo(db)
+	bookmarkRepo := pg.NewPostgresBookmarkRepo(db)
 	hackathonHandler := server.NewHackathonHandler(pgRepo)
+	bookmarkHandler := server.NewBookmarkHandler(bookmarkRepo)
 	authHandler := server.NewAuthHandler(authRepo)
 	
 
 	mux := http.NewServeMux()
 
+	//public routes
 	mux.HandleFunc("POST /v1/auth/login", authHandler.Login)
 	mux.HandleFunc("POST /v1/auth/register", authHandler.Register)
 	mux.HandleFunc("GET /v1/search", hackathonHandler.SearchHackathons)
 
+	//protected routes
+	mux.HandleFunc("POST /v1/bookmarks", server.AuthMiddleware(bookmarkHandler.AddBookmark))
+	mux.HandleFunc("DELETE /v1/bookmarks", server.AuthMiddleware(bookmarkHandler.RemoveBookmark))
+	mux.HandleFunc("GET /v1/bookmarks", server.AuthMiddleware(bookmarkHandler.GetBookmarksByUser))
 
 	fmt.Printf("Starting server on port %s\n", port)
 
