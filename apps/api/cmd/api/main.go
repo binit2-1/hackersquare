@@ -86,7 +86,7 @@ func main(){
 		}
 	}()
 
-	if err := http.ListenAndServe(port, mux); err != nil {
+	if err := http.ListenAndServe(port, server.CORSMiddleware(mux)); err != nil {
 		log.Fatalf("FATAL: Server crashed: %v", err)
 	} 
 	

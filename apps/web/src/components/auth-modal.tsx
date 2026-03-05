@@ -14,6 +14,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
+import { useRouter } from "next/navigation";
+
 
 /* ── inline SVG logos (avoids extra icon deps) ── */
 
@@ -62,7 +64,11 @@ export default function AuthModal({
   onOpenChange,
   initialTab = "signin",
 }: Props) {
+  const router = useRouter();
+
   const [tab, setTab] = React.useState<"signin" | "signup">(initialTab);
+  const [isLoading, setIsLoading] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
 
   // Sync tab when initialTab prop changes (e.g. dropdown click)
   React.useEffect(() => {
@@ -81,15 +87,42 @@ export default function AuthModal({
     setPassword("");
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsLoading(true);
+    setError(null);
+
+    let endpoint = "";
+    let payload: Record<string, string> = {};
     if (isSignUp) {
-      console.log("Register", { name, email, password });
+      endpoint = "/v1/auth/register";
+      payload = { name, email, password };
     } else {
-      console.log("Login", { name, password });
+      endpoint = "/v1/auth/login";
+      payload = {email, password}
     }
-    reset();
-    onOpenChange(false);
+
+    try{
+      const res = await fetch(`http://localhost:8080${endpoint}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+        credentials: "include", 
+      });
+
+      if (!res.ok){
+        const err = await res.text();
+        throw new Error(err || "Authentication failed");
+      }
+      reset();
+      onOpenChange(false);
+    } catch (err) {
+      setError((err as Error).message);
+    } finally{
+      setIsLoading(false);
+    }
   };
 
   const handleOAuth = (provider: "github" | "google") => {
@@ -157,22 +190,15 @@ export default function AuthModal({
               />
             </div>
           )}
-
           <div className="space-y-1.5">
-            <Label htmlFor="auth-email-or-name" className="text-sm">
-              {isSignUp ? "Email" : "Username"}
-            </Label>
+            <Label htmlFor="auth-email" className="text-sm">Email</Label>
             <Input
-              id="auth-email-or-name"
-              value={isSignUp ? email : name}
-              onChange={(e) =>
-                isSignUp
-                  ? setEmail(e.target.value)
-                  : setName(e.target.value)
-              }
-              placeholder={isSignUp ? "you@example.com" : "your username"}
-              type={isSignUp ? "email" : "text"}
-              autoComplete={isSignUp ? "email" : "username"}
+              id="auth-email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="you@example.com"
+              type="email"
+              required
             />
           </div>
 
@@ -189,6 +215,8 @@ export default function AuthModal({
               autoComplete={isSignUp ? "new-password" : "current-password"}
             />
           </div>
+
+          {error && <p className="text-sm font-medium text-red-500">{error}</p>}
 
           <Button type="submit" className="w-full h-10 text-sm font-medium">
             {isSignUp ? "Create account" : "Sign in"}
