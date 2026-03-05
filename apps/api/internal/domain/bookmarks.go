@@ -10,6 +10,6 @@ type Bookmark struct {
 type BookmarkRepository interface {
 	AddBookmark(userID, hackathonID string) error
 	RemoveBookmark(userID, hackathonID string) error
-	GetBookmarksByUser(userID string) ([]Bookmark, error)
+	GetBookmarksByUser(userID string) ([]Hackathon, error)
 }
 
