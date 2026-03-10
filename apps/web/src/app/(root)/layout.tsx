@@ -1,3 +1,5 @@
+import { AuthProvider } from "@/context/AuthContext";
+
 export default function RootGroupLayout({
   children,
 }: {
@@ -5,7 +7,9 @@ export default function RootGroupLayout({
 }) {
   return (
     <>
-      {children}
+      <AuthProvider>
+        {children}
+      </AuthProvider>
     </>
   );
 }
