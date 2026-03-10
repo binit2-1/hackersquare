@@ -104,3 +104,51 @@ func (h *AuthHandler) setAuthCookie(w http.ResponseWriter, user *domain.User) {
 
 	http.SetCookie(w, cookie)
 }
+
+func (h *AuthHandler) GetUserByID(w http.ResponseWriter, r *http.Request) {
+	userID, ok := r.Context().Value("userID").(string)
+	if !ok {
+		http.Error(w, "Unauthorized: User ID not found in context", http.StatusUnauthorized)
+		return
+	}
+	
+	user, err:= h.UserRepo.GetUserByID(userID)
+	if err != nil {
+		http.Error(w, "Failed to retrieve user", http.StatusInternalServerError)
+		return
+	}
+
+	if user == nil {
+		http.Error(w, "User not found", http.StatusNotFound)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(user)
+}
+
+
+
+
+
+
+func (h *AuthHandler) GetMe(w http.ResponseWriter, r *http.Request) {
+	userID, ok := r.Context().Value("userID").(string)
+	if !ok {
+		http.Error(w, "Unauthorized: User ID not found in context", http.StatusUnauthorized)
+		return
+	}
+
+	user, err := h.UserRepo.GetUserByID(userID)
+	if err != nil {
+		http.Error(w, "Failed to retrieve user", http.StatusInternalServerError)
+		return
+	}
+	
+	if user == nil {
+		http.Error(w, "User not found", http.StatusNotFound)
+		return
+	}
+
+}

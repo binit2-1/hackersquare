@@ -54,16 +54,20 @@ func main(){
 
 	mux := http.NewServeMux()
 
+	
 	//public routes
 	mux.HandleFunc("POST /v1/auth/login", authHandler.Login)
 	mux.HandleFunc("POST /v1/auth/register", authHandler.Register)
 	mux.HandleFunc("GET /v1/search", hackathonHandler.SearchHackathons)
-
+	
 	//protected routes
 	mux.HandleFunc("POST /v1/bookmarks", server.AuthMiddleware(bookmarkHandler.AddBookmark))
 	mux.HandleFunc("DELETE /v1/bookmarks", server.AuthMiddleware(bookmarkHandler.RemoveBookmark))
 	mux.HandleFunc("GET /v1/bookmarks", server.AuthMiddleware(bookmarkHandler.GetBookmarksByUser))
-
+	
+	//me
+	mux.HandleFunc("GET /v1/auth/me", server.AuthMiddleware(authHandler.GetMe))
+	
 	fmt.Printf("Starting server on port %s\n", port)
 
 	//scrappers
