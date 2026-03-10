@@ -1,7 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { HackathonProps } from '@/models/hackathon';
+import { useAuth } from '@/context/AuthContext';
 
 const STORAGE_KEY = 'hack-bookmarks';
+const API_BASE_URL = 'http://localhost:8080';
 
 // Global state to sync across all hook instances
 let globalBookmarks: HackathonProps[] = [];
@@ -10,6 +12,11 @@ let listeners: Set<(bookmarks: HackathonProps[]) => void> = new Set();
 // Notify all listeners of state change
 const notifyListeners = () => {
     listeners.forEach(listener => listener([...globalBookmarks]));
+};
+
+const setGlobalBookmarks = (bookmarks: HackathonProps[]) => {
+    globalBookmarks = bookmarks;
+    notifyListeners();
 };
 
 // Get bookmarks from localStorage (client-side only)
@@ -26,18 +33,24 @@ const getStoredBookmarks = (): HackathonProps[] => {
     return [];
 };
 
+type BookmarkApiResponse = Omit<HackathonProps, 'isBookmarked' | 'prize_usd'> & {
+    prize_usd?: number | null;
+    isBookmarked?: boolean;
+};
+
+const normalizeBookmark = (hackathon: BookmarkApiResponse): HackathonProps => ({
+    ...hackathon,
+    prize_usd: hackathon.prize_usd ?? 0,
+    isBookmarked: true,
+});
+
 export function useBookmarks() {
     const [bookmarks, setBookmarks] = useState<HackathonProps[]>(globalBookmarks);
     const [mounted, setMounted] = useState(false);
+    const { user, isLoading } = useAuth();
 
     useEffect(() => {
         setMounted(true);
-        // Initialize from localStorage on mount
-        const stored = getStoredBookmarks();
-        if (stored.length > 0) {
-            globalBookmarks = stored;
-            setBookmarks(stored);
-        }
 
         // Subscribe to global state changes
         const handleChange = (newBookmarks: HackathonProps[]) => {
@@ -45,51 +58,105 @@ export function useBookmarks() {
         };
         listeners.add(handleChange);
 
-        // Listen for storage events from other tabs
+        return () => {
+            listeners.delete(handleChange);
+        };
+    }, []);
+
+    useEffect(() => {
+        if (!mounted || isLoading) return;
+
+        if (user) {
+            const fetchBookmarks = async () => {
+                try {
+                    const response = await fetch(`${API_BASE_URL}/v1/bookmarks`, {
+                        method: 'GET',
+                        credentials: 'include',
+                    });
+                    if (!response.ok) {
+                        const errText = await response.text();
+                        console.error('Bookmark fetch failed:', response.status, errText);
+                        throw new Error(`Failed to fetch bookmarks: ${response.status}`);
+                    }
+                    const data: BookmarkApiResponse[] = await response.json();
+                    setGlobalBookmarks((data ?? []).map(normalizeBookmark));
+                } catch (error) {
+                    console.error('Failed to fetch bookmarks:', error);
+                }
+            };
+
+            fetchBookmarks();
+        } else {
+            const stored = getStoredBookmarks();
+            setGlobalBookmarks(stored);
+        }
+    }, [mounted, isLoading, user]);
+
+    useEffect(() => {
+        if (!mounted || user) return;
+
         const handleStorage = (e: StorageEvent) => {
             if (e.key === STORAGE_KEY) {
                 const newBookmarks = getStoredBookmarks();
-                globalBookmarks = newBookmarks;
-                notifyListeners();
+                setGlobalBookmarks(newBookmarks);
             }
         };
         window.addEventListener('storage', handleStorage);
 
         return () => {
-            listeners.delete(handleChange);
             window.removeEventListener('storage', handleStorage);
         };
-    }, []);
+    }, [mounted, user]);
 
-    const toggleBookmark = useCallback((hackathon: HackathonProps) => {
-        // Read current state from localStorage to ensure we have latest
-        const currentBookmarks = getStoredBookmarks();
+    const toggleBookmark = useCallback(async (hackathon: HackathonProps) => {
+        if (isLoading) return;
 
-        const alreadyBookmarked = currentBookmarks.some((b) => b.id === hackathon.id);
-        let updatedBookmarks;
-        if (alreadyBookmarked) {
-            updatedBookmarks = currentBookmarks.filter((b) => b.id !== hackathon.id);
-        } else {
-            updatedBookmarks = [...currentBookmarks, hackathon];
+        const alreadyBookmarked = globalBookmarks.some((b) => b.id === hackathon.id);
+
+        if (user) {
+            try {
+                const endpoint = alreadyBookmarked
+                    ? `${API_BASE_URL}/v1/bookmarks?hackathon_id=${encodeURIComponent(hackathon.id)}`
+                    : `${API_BASE_URL}/v1/bookmarks`;
+                const response = await fetch(endpoint, {
+                    method: alreadyBookmarked ? 'DELETE' : 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    credentials: 'include',
+                    body: alreadyBookmarked ? undefined : JSON.stringify({ hackathon_id: hackathon.id }),
+                });
+
+                if (!response.ok) {
+                    const errText = await response.text();
+                    console.error('Bookmark update failed:', response.status, errText);
+                    throw new Error(`Failed to update bookmark: ${response.status}`);
+                }
+
+                const nextBookmarks = alreadyBookmarked
+                    ? globalBookmarks.filter((b) => b.id !== hackathon.id)
+                    : [...globalBookmarks, { ...hackathon, isBookmarked: true }];
+
+                setGlobalBookmarks(nextBookmarks);
+            } catch (error) {
+                console.error('Failed to update bookmark:', error);
+            }
+            return;
         }
 
-        // Update global state
-        globalBookmarks = updatedBookmarks;
+        // Guest flow: read current state from localStorage to ensure latest
+        const currentBookmarks = getStoredBookmarks();
+        const guestAlreadyBookmarked = currentBookmarks.some((b) => b.id === hackathon.id);
+        const updatedBookmarks = guestAlreadyBookmarked
+            ? currentBookmarks.filter((b) => b.id !== hackathon.id)
+            : [...currentBookmarks, hackathon];
 
-        // Update localStorage
         localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedBookmarks));
-
-        // Notify all hook instances
-        notifyListeners();
-    }, []);
+        setGlobalBookmarks(updatedBookmarks);
+    }, [isLoading, user]);
 
     const isBookmarked = useCallback((id: string) => {
-        // Check global state first, then fall back to localStorage
-        if (globalBookmarks.length > 0) {
-            return globalBookmarks.some((b) => b.id === id);
-        }
-        const stored = getStoredBookmarks();
-        return stored.some((b) => b.id === id);
+        return globalBookmarks.some((b) => b.id === id);
     }, []);
 
     return { bookmarks, toggleBookmark, isBookmarked, mounted };

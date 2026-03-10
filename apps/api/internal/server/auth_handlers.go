@@ -98,7 +98,7 @@ func (h *AuthHandler) setAuthCookie(w http.ResponseWriter, user *domain.User) {
 		Expires:  time.Now().Add(24 * time.Hour),
 		HttpOnly: true,
 		Secure:   false,
-		SameSite: http.SameSiteNoneMode,
+		SameSite: http.SameSiteLaxMode,
 	}
 
 	http.SetCookie(w, cookie)
