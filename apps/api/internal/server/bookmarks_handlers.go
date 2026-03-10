@@ -8,8 +8,7 @@ import (
 	"github.com/binit2-1/hackersquare/apps/api/internal/domain"
 )
 
-
-type BookmarkHandler struct{
+type BookmarkHandler struct {
 	Repo domain.BookmarkRepository
 }
 
@@ -51,9 +50,7 @@ func getHackathonID(r *http.Request) (string, error) {
 	return req.HackathonID, nil
 }
 
-
-
-func(h *BookmarkHandler) AddBookmark(w http.ResponseWriter, r *http.Request){
+func (h *BookmarkHandler) AddBookmark(w http.ResponseWriter, r *http.Request) {
 	userID, ok := getUserID(r)
 	if !ok || userID == "" {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
@@ -71,7 +68,7 @@ func(h *BookmarkHandler) AddBookmark(w http.ResponseWriter, r *http.Request){
 		return
 	}
 
-	err  = h.Repo.AddBookmark(userID, hackathonID)
+	err = h.Repo.AddBookmark(userID, hackathonID)
 	if err != nil {
 		fmt.Printf("AddBookmark DB error: %v\n", err)
 		http.Error(w, "Failed to add bookmark", http.StatusInternalServerError)
@@ -81,9 +78,9 @@ func(h *BookmarkHandler) AddBookmark(w http.ResponseWriter, r *http.Request){
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(map[string]string{"message": "Added bookmark"})
-}	
+}
 
-func(h *BookmarkHandler) RemoveBookmark(w http.ResponseWriter, r *http.Request){
+func (h *BookmarkHandler) RemoveBookmark(w http.ResponseWriter, r *http.Request) {
 	userID, ok := getUserID(r)
 	if !ok || userID == "" {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
@@ -101,7 +98,7 @@ func(h *BookmarkHandler) RemoveBookmark(w http.ResponseWriter, r *http.Request){
 		return
 	}
 
-	err  = h.Repo.RemoveBookmark(userID, hackathonID)
+	err = h.Repo.RemoveBookmark(userID, hackathonID)
 	if err != nil {
 		fmt.Printf("RemoveBookmark DB error: %v\n", err)
 		http.Error(w, "Failed to remove bookmark", http.StatusInternalServerError)
@@ -113,7 +110,7 @@ func(h *BookmarkHandler) RemoveBookmark(w http.ResponseWriter, r *http.Request){
 	json.NewEncoder(w).Encode(map[string]string{"message": "Removed bookmark"})
 }
 
-func(h *BookmarkHandler) GetBookmarksByUser(w http.ResponseWriter, r *http.Request){
+func (h *BookmarkHandler) GetBookmarksByUser(w http.ResponseWriter, r *http.Request) {
 
 	userID, ok := getUserID(r)
 	if !ok || userID == "" {
