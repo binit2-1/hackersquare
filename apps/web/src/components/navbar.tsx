@@ -24,7 +24,7 @@ import { usePathname, useSearchParams, useRouter } from "next/navigation";
 import {
   Trophy,
   Bookmark,
-  User,
+  UserIcon,
   FunnelIcon,
   MagnifyingGlass,
   Check,
@@ -35,7 +35,7 @@ import {
 } from "@phosphor-icons/react/dist/ssr";
 import * as React from "react";
 import AuthModal from "@/components/auth-modal";
-
+import { useAuth } from "@/context/AuthContext";
 
 interface FilterState {
   status: string | null;
@@ -80,23 +80,25 @@ export function Navbar() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-
   const [scrolled, setScrolled] = React.useState(false);
   const [filterOpen, setFilterOpen] = React.useState(false);
   const [searchOpen, setSearchOpen] = React.useState(false);
-  // default to true so button is visible by default (hardcoded fallback)
   const [showAuthButton, setShowAuthButton] = React.useState(true);
   const [searchQuery, setSearchQuery] = React.useState("");
   const [showAuthModal, setShowAuthModal] = React.useState(false);
-  const [authInitialTab, setAuthInitialTab] = React.useState<"signin" | "signup">("signin");
-  const [debouncedQuery, setDebouncedQuery] = React.useState("");
-  const [isLoading, setIsLoading] = React.useState(false);
-  const [hackathons, setHackathons] = React.useState<HackathonProps[]>([]);
+  const [authInitialTab, setAuthInitialTab] = React.useState<
+    "signin" | "signup"
+  >("signin");
   const [activeFilters, setActiveFilters] = React.useState<FilterState>({
     status: searchParams.get("status") || null,
     location: searchParams.get("location") || null,
     prizeRange: searchParams.get("prizeRange") || null,
   });
+
+  const { user, isLoading, logout } = useAuth();
+  const isAuthed = Boolean(user);
+  const authReady = !isLoading;
+  const showAuthActions = authReady && !isAuthed;
 
   // Scroll effect
   React.useEffect(() => {
@@ -159,15 +161,17 @@ export function Navbar() {
     return Object.values(activeFilters).filter(Boolean).length;
   }, [activeFilters]);
 
-  const handleFilterSelect = (type: keyof FilterState, value: string | null) => {
-
+  const handleFilterSelect = (
+    type: keyof FilterState,
+    value: string | null,
+  ) => {
     const newValue = activeFilters[type] === value ? null : value;
 
-    setActiveFilters((prev) => ({...prev, [type] : newValue}));
-    
+    setActiveFilters((prev) => ({ ...prev, [type]: newValue }));
+
     const current = new URLSearchParams(Array.from(searchParams.entries()));
 
-    if (newValue){
+    if (newValue) {
       current.set(type, newValue);
     } else {
       current.delete(type);
@@ -175,8 +179,7 @@ export function Navbar() {
 
     current.set("page", "1");
 
-    const search =  current.toString();
-
+    const search = current.toString();
 
     router.push(`/search${search ? `?${search}` : ""}`);
   };
@@ -185,10 +188,10 @@ export function Navbar() {
     setActiveFilters({ status: null, location: null, prizeRange: null });
     router.push(pathname);
   };
-  
+
   // Handles global search routing
   const handleSearchSubmit = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' && searchQuery.trim()) {
+    if (e.key === "Enter" && searchQuery.trim()) {
       setSearchOpen(false);
       const current = new URLSearchParams(Array.from(searchParams.entries()));
       current.set("q", searchQuery.trim());
@@ -200,7 +203,9 @@ export function Navbar() {
     <header
       className={cn(
         "sticky top-0 z-50 w-full transition-all duration-200",
-        scrolled ? "backdrop-blur-md border-b border-border/40 bg-background/80" : "bg-background",
+        scrolled
+          ? "backdrop-blur-md border-b border-border/40 bg-background/80"
+          : "bg-background",
       )}
     >
       <div className="flex h-14 items-center">
@@ -221,7 +226,9 @@ export function Navbar() {
                   href={item.href}
                   className={cn(
                     "flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-2 rounded-md font-medium transition-colors text-xs sm:text-sm lg:text-base",
-                    isActive ? "text-foreground" : "text-muted-foreground hover:text-foreground",
+                    isActive
+                      ? "text-foreground"
+                      : "text-muted-foreground hover:text-foreground",
                   )}
                 >
                   <Icon className="h-5 w-5 shrink-0" weight="regular" />
@@ -257,7 +264,11 @@ export function Navbar() {
             </Button>
           </div>
 
-          <CommandDialog open={searchOpen} onOpenChange={setSearchOpen} title="Search Hackathons">
+          <CommandDialog
+            open={searchOpen}
+            onOpenChange={setSearchOpen}
+            title="Search Hackathons"
+          >
             <CommandInput
               placeholder="Search hackathons and press Enter..."
               value={searchQuery}
@@ -265,13 +276,19 @@ export function Navbar() {
               onKeyDown={handleSearchSubmit}
             />
             <CommandList className="max-h-100">
-               <CommandEmpty>
-                 {searchQuery.trim() ? `Press Enter to search for "${searchQuery}"` : "Start typing to search..."}
-               </CommandEmpty>
+              <CommandEmpty>
+                {searchQuery.trim()
+                  ? `Press Enter to search for "${searchQuery}"`
+                  : "Start typing to search..."}
+              </CommandEmpty>
             </CommandList>
           </CommandDialog>
 
-          <CommandDialog open={filterOpen} onOpenChange={setFilterOpen} title="Filter Hackathons">
+          <CommandDialog
+            open={filterOpen}
+            onOpenChange={setFilterOpen}
+            title="Filter Hackathons"
+          >
             <CommandInput placeholder="Search filters..." />
             <CommandList className="max-h-100">
               <CommandEmpty>No matching filters.</CommandEmpty>
@@ -280,14 +297,20 @@ export function Navbar() {
                 {STATUS_FILTERS.map((filter) => (
                   <CommandItem
                     key={filter.value}
-                    onSelect={() => handleFilterSelect("status", filter.value === "all" ? null : filter.value)}
+                    onSelect={() =>
+                      handleFilterSelect(
+                        "status",
+                        filter.value === "all" ? null : filter.value,
+                      )
+                    }
                     className="cursor-pointer"
                   >
                     <div className="flex items-center gap-2 flex-1">
                       <Calendar className="h-4 w-4 text-muted-foreground" />
                       <span>{filter.label}</span>
                     </div>
-                    {(activeFilters.status === filter.value || (filter.value === "all" && !activeFilters.status)) && (
+                    {(activeFilters.status === filter.value ||
+                      (filter.value === "all" && !activeFilters.status)) && (
                       <Check className="h-4 w-4 text-primary" />
                     )}
                   </CommandItem>
@@ -300,14 +323,18 @@ export function Navbar() {
                 {LOCATION_FILTERS.map((filter) => (
                   <CommandItem
                     key={filter.value}
-                    onSelect={() => handleFilterSelect("location", filter.value)}
+                    onSelect={() =>
+                      handleFilterSelect("location", filter.value)
+                    }
                     className="cursor-pointer"
                   >
                     <div className="flex items-center gap-2 flex-1">
                       <MapPin className="h-4 w-4 text-muted-foreground" />
                       <span>{filter.label}</span>
                     </div>
-                    {activeFilters.location === filter.value && <Check className="h-4 w-4 text-primary" />}
+                    {activeFilters.location === filter.value && (
+                      <Check className="h-4 w-4 text-primary" />
+                    )}
                   </CommandItem>
                 ))}
               </CommandGroup>
@@ -318,14 +345,18 @@ export function Navbar() {
                 {PRIZE_FILTERS.map((filter) => (
                   <CommandItem
                     key={filter.value}
-                    onSelect={() => handleFilterSelect("prizeRange", filter.value)}
+                    onSelect={() =>
+                      handleFilterSelect("prizeRange", filter.value)
+                    }
                     className="cursor-pointer"
                   >
                     <div className="flex items-center gap-2 flex-1">
                       <CurrencyDollar className="h-4 w-4 text-muted-foreground" />
                       <span>{filter.label}</span>
                     </div>
-                    {activeFilters.prizeRange === filter.value && <Check className="h-4 w-4 text-primary" />}
+                    {activeFilters.prizeRange === filter.value && (
+                      <Check className="h-4 w-4 text-primary" />
+                    )}
                   </CommandItem>
                 ))}
               </CommandGroup>
@@ -338,7 +369,9 @@ export function Navbar() {
                       onSelect={clearFilters}
                       className="cursor-pointer text-muted-foreground hover:text-foreground"
                     >
-                      <span className="flex-1 text-center text-xs">Clear all filters ({activeFilterCount} active)</span>
+                      <span className="flex-1 text-center text-xs">
+                        Clear all filters ({activeFilterCount} active)
+                      </span>
                     </CommandItem>
                   </CommandGroup>
                 </>
@@ -348,7 +381,7 @@ export function Navbar() {
         </div>
 
         <div className="shrink-0 flex flex-row gap-4 px-4 sm:px-6 lg:px-8 items-center">
-          {showAuthButton ? (
+          {showAuthButton && showAuthActions ? (
             <Button
               className="inline-flex min-w-36 rounded-4xl px-4 justify-center"
               size="sm"
@@ -356,34 +389,77 @@ export function Navbar() {
             >
               Sign In / Sign Up
             </Button>
+          ) : user ? (
+            <div className="flex items-center gap-2">
+              <span className="hidden sm:inline text-sm font-medium">
+                {user.name}
+              </span>
+            </div>
           ) : null}
 
           {/* Avatar: only act as a dropdown trigger when auth button is hidden (mobile/smaller screens) */}
-          {!showAuthButton ? (
+          {!showAuthButton && showAuthActions ? (
             <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Avatar className="h-8 w-8 cursor-pointer">
+              <DropdownMenuTrigger className="h-8 w-8 rounded-full p-0">
+                <Avatar className="h-8 w-8">
                   <AvatarFallback className="bg-muted text-muted-foreground">
-                    <User className="h-4 w-4" weight="regular" />
+                    <UserIcon className="h-4 w-4" weight="regular" />
                   </AvatarFallback>
                 </Avatar>
               </DropdownMenuTrigger>
 
               <DropdownMenuContent align="end" className="w-40">
-                <DropdownMenuItem onSelect={() => { setAuthInitialTab("signin"); setShowAuthModal(true); }}>Sign In</DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => { setAuthInitialTab("signup"); setShowAuthModal(true); }}>Sign Up</DropdownMenuItem>
+                <DropdownMenuItem
+                  onSelect={() => {
+                    setAuthInitialTab("signin");
+                    setShowAuthModal(true);
+                  }}
+                >
+                  Sign In
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onSelect={() => {
+                    setAuthInitialTab("signup");
+                    setShowAuthModal(true);
+                  }}
+                >
+                  Sign Up
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : isAuthed ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger className="h-8 w-8 rounded-full p-0">
+                <Avatar className="h-8 w-8">
+                  <AvatarFallback className="bg-muted text-muted-foreground">
+                    <UserIcon className="h-4 w-4" weight="regular" />
+                  </AvatarFallback>
+                </Avatar>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-40">
+                <DropdownMenuItem
+                  onSelect={() => {
+                    logout();
+                  }}
+                >
+                  Logout
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (
             <Avatar className="h-8 w-8 cursor-default">
               <AvatarFallback className="bg-muted text-muted-foreground">
-                <User className="h-4 w-4" weight="regular" />
+                <UserIcon className="h-4 w-4" weight="regular" />
               </AvatarFallback>
             </Avatar>
           )}
         </div>
       </div>
-      <AuthModal open={showAuthModal} onOpenChange={setShowAuthModal} initialTab={authInitialTab} />
+      <AuthModal
+        open={showAuthModal}
+        onOpenChange={setShowAuthModal}
+        initialTab={authInitialTab}
+      />
     </header>
   );
 }

@@ -56,7 +56,6 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]string{"message": "User registered successfully"})
 }
 
-
 func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	var req LoginRequest
 
@@ -66,7 +65,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	user, err := h.UserRepo.GetUserByEmail(req.Email)
-	if err != nil{
+	if err != nil {
 		http.Error(w, "Invalid email or password", http.StatusUnauthorized)
 		return
 	}
@@ -85,7 +84,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *AuthHandler) setAuthCookie(w http.ResponseWriter, user *domain.User) {
-	
+
 	tokenString, err := utils.GenerateJWT(user.ID, user.Email)
 	if err != nil {
 		http.Error(w, "Failed to generate auth token", http.StatusInternalServerError)
@@ -96,10 +95,10 @@ func (h *AuthHandler) setAuthCookie(w http.ResponseWriter, user *domain.User) {
 		Name:     "auth_token",
 		Value:    tokenString,
 		Path:     "/",
-		Expires:   time.Now().Add(24 * time.Hour),
+		Expires:  time.Now().Add(24 * time.Hour),
 		HttpOnly: true,
-		Secure:   false, 
-		SameSite: http.SameSiteLaxMode,
+		Secure:   false,
+		SameSite: http.SameSiteNoneMode,
 	}
 
 	http.SetCookie(w, cookie)
@@ -111,8 +110,8 @@ func (h *AuthHandler) GetUserByID(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Unauthorized: User ID not found in context", http.StatusUnauthorized)
 		return
 	}
-	
-	user, err:= h.UserRepo.GetUserByID(userID)
+
+	user, err := h.UserRepo.GetUserByID(userID)
 	if err != nil {
 		http.Error(w, "Failed to retrieve user", http.StatusInternalServerError)
 		return
@@ -128,11 +127,6 @@ func (h *AuthHandler) GetUserByID(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(user)
 }
 
-
-
-
-
-
 func (h *AuthHandler) GetMe(w http.ResponseWriter, r *http.Request) {
 	userID, ok := r.Context().Value("userID").(string)
 	if !ok {
@@ -145,10 +139,13 @@ func (h *AuthHandler) GetMe(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Failed to retrieve user", http.StatusInternalServerError)
 		return
 	}
-	
+
 	if user == nil {
 		http.Error(w, "User not found", http.StatusNotFound)
 		return
 	}
 
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(user)
 }

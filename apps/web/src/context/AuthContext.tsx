@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { AuthContextType, User } from "@/models/user";
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -9,11 +9,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    checkAuth();
-  }, []);
-
-  const checkAuth = async () => {
+  const checkAuth = useCallback(async () => {
+    setIsLoading(true);
     try {
       const res = await fetch("http://localhost:8080/v1/auth/me", {
         method: "GET",
@@ -31,14 +28,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    checkAuth();
+  }, [checkAuth]);
 
   const logout = async () => {
     //TODO: Implement logout API call
     setUser(null);
   };
+
+  const refreshUser = async () => {
+    await checkAuth();
+  };
   return (
-    <AuthContext.Provider value={{ user, isLoading, logout }}>
+    <AuthContext.Provider value={{ user, isLoading, logout, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );

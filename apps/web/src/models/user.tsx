@@ -8,4 +8,5 @@ export type AuthContextType = {
     user: User | null;
     isLoading: boolean;
     logout: () => void;
+    refreshUser: () => Promise<void>;
 }

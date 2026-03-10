@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/context/AuthContext";
 
 
 /* ── inline SVG logos (avoids extra icon deps) ── */
@@ -65,6 +66,7 @@ export default function AuthModal({
   initialTab = "signin",
 }: Props) {
   const router = useRouter();
+  const { refreshUser } = useAuth();
 
   const [tab, setTab] = React.useState<"signin" | "signup">(initialTab);
   const [isLoading, setIsLoading] = React.useState(false);
@@ -116,6 +118,7 @@ export default function AuthModal({
         const err = await res.text();
         throw new Error(err || "Authentication failed");
       }
+      await refreshUser();
       reset();
       onOpenChange(false);
     } catch (err) {

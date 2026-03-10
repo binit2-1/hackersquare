@@ -9,7 +9,7 @@ import (
 )
 
 
-var jwtSecret = []byte(os.Getenv("JWT_SECRET"))
+
 
 
 type Claims struct {
@@ -19,6 +19,11 @@ type Claims struct {
 }
 
 func GenerateJWT(userID string, email string)(string, error) {
+	secret := os.Getenv("JWT_SECRET")
+	if secret == "" {
+		return "", fmt.Errorf("JWT_SECRET environment variable is not set")
+	}
+
 	expirationTime := time.Now().Add(24 * time.Hour)
 
 	claims := &Claims{
@@ -31,8 +36,9 @@ func GenerateJWT(userID string, email string)(string, error) {
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	fmt.Printf("DEBUG GENERATE: Secret is '%s'\n", os.Getenv("JWT_SECRET"))
 
-	return  token.SignedString(jwtSecret)
+	return  token.SignedString([]byte(secret))
 }
 
 func ValidateJWT(tokenString string, secret string) (*Claims, error){
