@@ -14,9 +14,7 @@ import (
 	"github.com/joho/godotenv"
 )
 
-
-
-func main(){
+func main() {
 
 	err := godotenv.Load()
 	if err != nil {
@@ -33,7 +31,6 @@ func main(){
 		port = ":8080"
 	}
 
-
 	db, err := sql.Open("pgx", dbConnectionURL)
 	if err != nil {
 		log.Fatalf("FATAL: Failed to parse Postgres configuration: %v", err)
@@ -41,7 +38,7 @@ func main(){
 
 	defer db.Close()
 
-	// Initialize repositories 
+	// Initialize repositories
 	pgRepo := pg.NewPostgreEventRepo(db)
 	authRepo := pg.NewPostgreUserRepo(db)
 	bookmarkRepo := pg.NewPostgresBookmarkRepo(db)
@@ -50,24 +47,22 @@ func main(){
 	hackathonHandler := server.NewHackathonHandler(pgRepo)
 	bookmarkHandler := server.NewBookmarkHandler(bookmarkRepo)
 	authHandler := server.NewAuthHandler(authRepo)
-	
 
 	mux := http.NewServeMux()
 
-	
 	//public routes
 	mux.HandleFunc("POST /v1/auth/login", authHandler.Login)
 	mux.HandleFunc("POST /v1/auth/register", authHandler.Register)
 	mux.HandleFunc("GET /v1/search", hackathonHandler.SearchHackathons)
-	
+
 	//protected routes
 	mux.HandleFunc("POST /v1/bookmarks", server.AuthMiddleware(bookmarkHandler.AddBookmark))
 	mux.HandleFunc("DELETE /v1/bookmarks", server.AuthMiddleware(bookmarkHandler.RemoveBookmark))
 	mux.HandleFunc("GET /v1/bookmarks", server.AuthMiddleware(bookmarkHandler.GetBookmarksByUser))
-	
+
 	//me
 	mux.HandleFunc("GET /v1/auth/me", server.AuthMiddleware(authHandler.GetMe))
-	
+
 	fmt.Printf("Starting server on port %s\n", port)
 
 	//scrappers
@@ -84,15 +79,14 @@ func main(){
 		}
 	}()
 	//UNSTOP
-	go func(){
-		if err := scraper.RunUnstopScraper(db); err != nil{
+	go func() {
+		if err := scraper.RunUnstopScraper(db); err != nil {
 			fmt.Printf("❌ Unstop Scraper Error: %v\n", err)
 		}
 	}()
 
 	if err := http.ListenAndServe(port, server.CORSMiddleware(mux)); err != nil {
 		log.Fatalf("FATAL: Server crashed: %v", err)
-	} 
-	
+	}
 
 }

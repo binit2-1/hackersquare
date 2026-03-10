@@ -75,12 +75,9 @@ func (h *PostgresEventRepo) SearchHackathons(filters domain.SearchFilters) ([]do
 		}
 	}
 
-
-
 	if len(conditions) > 0 {
 		query += " AND " + strings.Join(conditions, " AND ")
 	}
-
 
 	limit := filters.Limit
 	if limit <= 0 {

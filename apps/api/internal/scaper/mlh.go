@@ -25,7 +25,6 @@ func RunMLHScraper(db *sql.DB) error {
 		r.Headers.Set("Accept-Language", "en-US,en;q=0.9")
 	})
 
-	
 	// Select event items
 	c.OnHTML("a[itemtype='https://schema.org/Event']", func(e *colly.HTMLElement) {
 		name := e.ChildText("[itemprop='name']")
@@ -95,7 +94,7 @@ func SaveToDB(db *sql.DB, title, loc, applyURL string, start, end time.Time) {
 			end_date = EXCLUDED.end_date,
 			updated_at = NOW();
 	`
-	
+
 	// MLH doesn't reliably list exact prize amounts on the index page, so we default to 0.0
 	_, err := db.ExecContext(context.Background(), query, title, "MLH", loc, 0.0, start, end, applyURL)
 	if err != nil {

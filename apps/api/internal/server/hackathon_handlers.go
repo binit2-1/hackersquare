@@ -9,7 +9,7 @@ import (
 	"github.com/binit2-1/hackersquare/apps/api/internal/domain"
 )
 
-type HackathonHandler struct{
+type HackathonHandler struct {
 	Repo domain.HackathonRepository
 }
 
@@ -19,20 +19,18 @@ func NewHackathonHandler(repo domain.HackathonRepository) *HackathonHandler {
 	}
 }
 
-
-func(h *HackathonHandler) SearchHackathons(w http.ResponseWriter, r *http.Request){
+func (h *HackathonHandler) SearchHackathons(w http.ResponseWriter, r *http.Request) {
 
 	queryValues := r.URL.Query()
 
-	filters:= domain.SearchFilters{
-		Query: queryValues.Get("q"),
-		Location: queryValues.Get("location"),
+	filters := domain.SearchFilters{
+		Query:      queryValues.Get("q"),
+		Location:   queryValues.Get("location"),
 		PrizeRange: queryValues.Get("prizeRange"),
-		Status: queryValues.Get("status"),
-		Page: 1,
-		Limit: 20,
+		Status:     queryValues.Get("status"),
+		Page:       1,
+		Limit:      20,
 	}
-
 
 	if pageStr := queryValues.Get("page"); pageStr != "" {
 		if val, err := strconv.Atoi(pageStr); err == nil && val > 0 {
@@ -46,7 +44,6 @@ func(h *HackathonHandler) SearchHackathons(w http.ResponseWriter, r *http.Reques
 		}
 	}
 
-
 	hackathons, totalCount, err := h.Repo.SearchHackathons(filters)
 	if err != nil {
 		fmt.Printf("❌ Database Search Error: %v\n", err)
@@ -55,10 +52,10 @@ func(h *HackathonHandler) SearchHackathons(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	if hackathons == nil{
+	if hackathons == nil {
 		hackathons = []domain.Hackathon{}
 	}
-	
+
 	if filters.Limit <= 0 {
 		filters.Limit = 20
 	}
@@ -72,13 +69,13 @@ func(h *HackathonHandler) SearchHackathons(w http.ResponseWriter, r *http.Reques
 		"data": hackathons,
 		"metadata": map[string]any{
 			"totalRecords": totalCount,
-			"currentPage": filters.Page,
-			"limit": filters.Limit,
-			"totalPages": totalPages,
+			"currentPage":  filters.Page,
+			"limit":        filters.Limit,
+			"totalPages":   totalPages,
 		},
 	}
 
-	if err := json.NewEncoder(w).Encode(&response); err != nil{
+	if err := json.NewEncoder(w).Encode(&response); err != nil {
 		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
 		return
 	}

@@ -1,10 +1,9 @@
 package domain
 
-
 type Bookmark struct {
-	UserID string `json:"user_id"`
+	UserID      string `json:"user_id"`
 	HackathonID string `json:"hackathon_id"`
-	CreatedAt string `json:"created_at"`
+	CreatedAt   string `json:"created_at"`
 }
 
 type BookmarkRepository interface {
@@ -12,4 +11,3 @@ type BookmarkRepository interface {
 	RemoveBookmark(userID, hackathonID string) error
 	GetBookmarksByUser(userID string) ([]Hackathon, error)
 }
-

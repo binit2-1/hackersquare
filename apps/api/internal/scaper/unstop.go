@@ -27,7 +27,7 @@ type UnstopRawEvents struct {
 	} `json:"organisation"`
 	AddressWithCountryLogo struct {
 		City    string `json:"city"`
-		Country any `json:"country"`
+		Country any    `json:"country"`
 	} `json:"address_with_country_logo"`
 	EndDate          time.Time `json:"end_date"`
 	RegnRequirements struct {
@@ -63,7 +63,7 @@ func RunUnstopScraper(db *sql.DB) error {
 
 		for i, hack := range pageHackathons {
 			utils.Debug("[%d/%d] Extracting: %s", i+1, len(pageHackathons), hack.SeoURL)
-			
+
 			title, host, loc, prizeUSD, start, end, applyURL, err := UnstopAdapter(&hack, rate)
 			if err != nil {
 				utils.Error("Adapter failed for %s: %v", hack.SeoURL, err)
@@ -97,11 +97,11 @@ func RunUnstopScraper(db *sql.DB) error {
 
 		// Grab the next page URL (API returns empty string if no more pages)
 		indexURL = indexData.Data.NextPageURL
-		
+
 		// Rate limit between pages to avoid IP bans
 		time.Sleep(2 * time.Second)
 	}
-	
+
 	return nil
 }
 

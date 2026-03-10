@@ -8,8 +8,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-
-type PostgresUserRepo struct{
+type PostgresUserRepo struct {
 	db *sql.DB
 }
 
@@ -19,7 +18,6 @@ func NewPostgreUserRepo(db *sql.DB) *PostgresUserRepo {
 	}
 }
 
-
 func (h *PostgresUserRepo) CreateUser(user *domain.User) error {
 
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.PasswordHash), bcrypt.DefaultCost)
@@ -28,10 +26,8 @@ func (h *PostgresUserRepo) CreateUser(user *domain.User) error {
 	}
 
 	query := `INSERT INTO users (name, email, password_hash) VALUES ($1, $2, $3) RETURNING id, created_at, updated_at`
-	
-	
-	
-	err =  h.db.QueryRow(
+
+	err = h.db.QueryRow(
 		query,
 		user.Name,
 		user.Email,
@@ -41,7 +37,6 @@ func (h *PostgresUserRepo) CreateUser(user *domain.User) error {
 		&user.CreatedAt,
 		&user.UpdatedAt,
 	)
-
 
 	if err != nil {
 		return fmt.Errorf("failed to create user: %w", err)
@@ -65,14 +60,14 @@ func (h *PostgresUserRepo) GetUserByEmail(email string) (*domain.User, error) {
 		&user.CreatedAt,
 		&user.UpdatedAt,
 	)
-	
+
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return nil, nil 
+			return nil, nil
 		}
 		return nil, fmt.Errorf("failed to get user by email: %w", err)
 	}
-	return &user, nil	
+	return &user, nil
 }
 
 func (h *PostgresUserRepo) GetUserByID(id string) (*domain.User, error) {
@@ -88,11 +83,10 @@ func (h *PostgresUserRepo) GetUserByID(id string) (*domain.User, error) {
 
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return nil, nil 
+			return nil, nil
 		}
 		return nil, fmt.Errorf("failed to get user by id: %w", err)
 	}
-
 
 	return &user, nil
 

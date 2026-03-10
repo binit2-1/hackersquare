@@ -67,14 +67,14 @@ func (h *PostgresBookmarkRepo) GetBookmarksByUser(userID string) ([]domain.Hacka
 		ORDER BY b.created_at DESC
 	`
 
-	rows, err  := h.db.Query(query, userID)
+	rows, err := h.db.Query(query, userID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
 	var bookmarks []domain.Hackathon
-	for rows.Next(){
+	for rows.Next() {
 		var bookmark domain.Hackathon
 		err := rows.Scan(
 			&bookmark.ID,
@@ -100,7 +100,5 @@ func (h *PostgresBookmarkRepo) GetBookmarksByUser(userID string) ([]domain.Hacka
 		bookmarks = []domain.Hackathon{}
 	}
 
-	
 	return bookmarks, nil
 }
-
