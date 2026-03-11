@@ -149,3 +149,20 @@ func (h *AuthHandler) GetMe(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(user)
 }
+
+func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
+
+	cookie := &http.Cookie{
+		Name:     "auth_token",
+		Value:    "",
+		Path:     "/",
+		Expires:  time.Unix(0,0),
+		HttpOnly: true,
+		Secure:   false,
+		SameSite: http.SameSiteLaxMode,
+	}
+
+	http.SetCookie(w, cookie)
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{"message": "Logout successful"})
+}
