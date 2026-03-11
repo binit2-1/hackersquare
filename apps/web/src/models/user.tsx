@@ -2,6 +2,12 @@ export type User = {
     id: string;
     name: string;
     email: string;
+    headline: string;
+    location: string;
+    github_handle: string;
+    website_url: string;
+    linkedin_url: string;
+    twitter_url: string;
 };
 
 export type AuthContextType = {

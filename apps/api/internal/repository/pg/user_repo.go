@@ -73,12 +73,18 @@ func (h *PostgresUserRepo) GetUserByEmail(email string) (*domain.User, error) {
 func (h *PostgresUserRepo) GetUserByID(id string) (*domain.User, error) {
 	var user domain.User
 
-	query := `SELECT id, name, email from users WHERE id = $1`
+	query := `SELECT id, name, email, COALESCE(headline, ''), COALESCE(location, ''), COALESCE(github_handle, ''), COALESCE(website_url, ''), COALESCE(linkedin_url, ''), COALESCE(twitter_url, '') FROM users WHERE id = $1`
 
 	err := h.db.QueryRow(query, id).Scan(
 		&user.ID,
 		&user.Name,
 		&user.Email,
+		&user.Headline,
+		&user.Location,
+		&user.GithubHandle,
+		&user.WebsiteURL,
+		&user.LinkedinURL,
+		&user.TwitterURL,
 	)
 
 	if err != nil {
@@ -89,5 +95,24 @@ func (h *PostgresUserRepo) GetUserByID(id string) (*domain.User, error) {
 	}
 
 	return &user, nil
+}
 
+func (h *PostgresUserRepo) UpdateUserProfile(userID string, data domain.ProfileUpdateRequest) error {
+	query := `UPDATE users SET headline = $1, location = $2, website_url = $3, linkedin_url = $4, twitter_url = $5, updated_at = NOW() WHERE id = $6`
+
+	result, err := h.db.Exec(query, data.Headline, data.Location, data.WebsiteURL, data.LinkedinURL, data.TwitterURL, userID)
+	if err != nil {
+		return fmt.Errorf("failed to update user profile: %w", err)
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to check rows affected: %w", err)
+	}
+
+	if rows == 0 {
+		return fmt.Errorf("user not found")
+	}
+
+	return nil
 }

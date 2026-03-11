@@ -46,16 +46,28 @@ const mockPinnedRepos = [
 ];
 
 export default function ProfilePage() {
-  const { user, isLoading } = useAuth();
+  const { user, isLoading, refreshUser } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [savingLinks, setSavingLinks] = useState(false);
 
-  // Form state
-  const [headline, setHeadline] = useState("Frontend Developer & Open Source Enthusiast");
-  const [location, setLocation] = useState("Bengaluru, India");
+  // Form state — seeded from user context
+  const [headline, setHeadline] = useState("");
+  const [location, setLocation] = useState("");
   const [website, setWebsite] = useState("");
   const [linkedin, setLinkedin] = useState("");
   const [twitter, setTwitter] = useState("");
+  const [hydrated, setHydrated] = useState(false);
+
+  // Seed form state from user once loaded
+  if (user && !hydrated) {
+    setHeadline(user.headline || "");
+    setLocation(user.location || "");
+    setWebsite(user.website_url || "");
+    setLinkedin(user.linkedin_url || "");
+    setTwitter(user.twitter_url || "");
+    setHydrated(true);
+  }
 
   if (isLoading) {
     return (
@@ -81,10 +93,51 @@ export default function ProfilePage() {
 
   const handleSave = async () => {
     setSaving(true);
-    // TODO: PUT /v1/profile to Go backend
-    await new Promise((r) => setTimeout(r, 400));
-    setSaving(false);
-    setIsEditing(false);
+    try {
+      const res = await fetch("http://localhost:8080/v1/users/profile", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          headline,
+          location,
+          website_url: website,
+          linkedin_url: linkedin,
+          twitter_url: twitter,
+        }),
+      });
+      if (!res.ok) throw new Error("Failed to save profile");
+      await refreshUser();
+      setIsEditing(false);
+    } catch (err) {
+      console.error("Profile save error:", err);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSaveLinks = async () => {
+    setSavingLinks(true);
+    try {
+      const res = await fetch("http://localhost:8080/v1/users/profile", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          headline,
+          location,
+          website_url: website,
+          linkedin_url: linkedin,
+          twitter_url: twitter,
+        }),
+      });
+      if (!res.ok) throw new Error("Failed to save links");
+      await refreshUser();
+    } catch (err) {
+      console.error("Links save error:", err);
+    } finally {
+      setSavingLinks(false);
+    }
   };
 
   const handleConnectGitHub = () => {
@@ -156,11 +209,11 @@ export default function ProfilePage() {
               <>
                 <p className="text-sm text-muted-foreground flex items-center gap-1.5">
                   <Briefcase className="size-3.5 shrink-0" />
-                  {headline}
+                  {headline || "No headline set"}
                 </p>
                 <p className="text-sm text-muted-foreground flex items-center gap-1.5">
                   <MapPin className="size-3.5 shrink-0" />
-                  {location}
+                  {location || "No location set"}
                 </p>
               </>
             )}
@@ -297,8 +350,8 @@ export default function ProfilePage() {
                   </div>
                 </div>
 
-                <Button size="sm" className="w-full">
-                  Save Links
+                <Button size="sm" className="w-full" onClick={handleSaveLinks} disabled={savingLinks}>
+                  {savingLinks ? <SpinnerGap className="size-4 animate-spin" /> : "Save Links"}
                 </Button>
               </CardContent>
             </Card>

@@ -65,6 +65,9 @@ func main() {
 	//me
 	mux.HandleFunc("GET /v1/auth/me", server.AuthMiddleware(authHandler.GetMe))
 
+	//profile
+	mux.HandleFunc("PUT /v1/users/profile", server.AuthMiddleware(authHandler.UpdateProfile))
+
 	fmt.Printf("Starting server on port %s\n", port)
 
 	//cleanup
