@@ -3,6 +3,7 @@ package scraper
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"regexp"
 	"strconv"
 	"strings"
@@ -35,9 +36,18 @@ func RunMLHScraper(db *sql.DB) error {
 		utils.Debug("Scraped: %s | Loc: %s | URL: %s", name, location, applyURL)
 
 		// Parse dates
-		start, end := ParseMLHDates(dateText)
+		start, end, err := ParseMLHDates(dateText)
+		if err != nil {
+			utils.Debug("Skipping %s due to unparseable date: %v", name, err)
+			return
+		}
 
-		// Directly pass to the Upsert function (No description needed anymore)
+		// The Bouncer: skip expired hackathons before they hit the database
+		if end.Before(time.Now()) {
+			utils.Debug("Skipping expired hackathon: %s (ended %s)", name, end.Format("Jan 02, 2006"))
+			return
+		}
+
 		SaveToDB(db, name, location, applyURL, start, end)
 	})
 
@@ -47,7 +57,7 @@ func RunMLHScraper(db *sql.DB) error {
 }
 
 // ParseMLHDates converts MLH's string dates (e.g., "FEB 13 - 15") to time.Time
-func ParseMLHDates(dateStr string) (time.Time, time.Time) {
+func ParseMLHDates(dateStr string) (time.Time, time.Time, error) {
 	year := 2026 // Target season
 
 	months := map[string]time.Month{
@@ -61,7 +71,7 @@ func ParseMLHDates(dateStr string) (time.Time, time.Time) {
 	matches := re.FindStringSubmatch(strings.ToUpper(dateStr))
 
 	if len(matches) < 3 {
-		return time.Now(), time.Now().Add(48 * time.Hour)
+		return time.Time{}, time.Time{}, fmt.Errorf("unrecognized date format: %s", dateStr)
 	}
 
 	monthStr := matches[1]
@@ -78,7 +88,7 @@ func ParseMLHDates(dateStr string) (time.Time, time.Time) {
 		endDate = startDate.Add(24 * time.Hour)
 	}
 
-	return startDate, endDate
+	return startDate, endDate, nil
 }
 
 // SaveToDB uses PostgreSQL ON CONFLICT to efficiently Upsert the hackathon

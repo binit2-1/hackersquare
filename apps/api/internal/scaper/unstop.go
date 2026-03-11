@@ -70,6 +70,12 @@ func RunUnstopScraper(db *sql.DB) error {
 				continue
 			}
 
+			// The Bouncer: skip expired hackathons before they hit the database
+			if end.Before(time.Now()) {
+				utils.Debug("Skipping expired hackathon: %s (ended %s)", title, end.Format("Jan 02, 2006"))
+				continue
+			}
+
 			utils.Debug("Transformed: %s | Host: %s | Loc: %s | USD: %.2f", title, host, loc, prizeUSD)
 
 			// The V2 PostgreSQL Upsert Query

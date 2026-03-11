@@ -41,6 +41,9 @@ func (h *PostgresEventRepo) SearchHackathons(filters domain.SearchFilters) ([]do
 		case "past":
 			conditions = append(conditions, "end_date < NOW()")
 		}
+	} else {
+		// The Safety Net: never return expired hackathons unless explicitly requesting "past"
+		conditions = append(conditions, "end_date >= CURRENT_DATE")
 	}
 
 	if filters.Location != "" {
@@ -131,9 +134,8 @@ func (h *PostgresEventRepo) SearchHackathons(filters domain.SearchFilters) ([]do
 	return hackathons, totalCount, nil
 }
 
-func(h *PostgresEventRepo) DeleteExpiredHackathons() (int64, error) {
+func (h *PostgresEventRepo) DeleteExpiredHackathons() (int64, error) {
 	query := `DELETE FROM hackathons WHERE end_date < CURRENT_DATE`
-
 
 	res, err := h.db.Exec(query)
 	if err != nil {

@@ -110,6 +110,12 @@ func RunDevfolioScraper(db *sql.DB) error {
 			continue
 		}
 
+		// The Bouncer: skip expired hackathons before they hit the database
+		if end.Before(time.Now()) {
+			utils.Debug("Skipping expired hackathon: %s (ended %s)", title, end.Format("Jan 02, 2006"))
+			continue
+		}
+
 		utils.Debug("Transformed: %s | Host: %s | Prize USD: %.2f | Starts: %s | URL: %s", title, host, prizeUSD, start.Format("Jan 02, 2006"), applyURL)
 
 		// The PostgreSQL Upsert Query

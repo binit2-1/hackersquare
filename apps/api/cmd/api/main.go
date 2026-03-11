@@ -68,7 +68,7 @@ func main() {
 	fmt.Printf("Starting server on port %s\n", port)
 
 	//cleanup
-	go func(){
+	go func() {
 		if count, err := pgRepo.DeleteExpiredHackathons(); err != nil {
 			fmt.Printf("Error deleting expired hackathons: %v\n", err)
 		} else if count > 0 {
@@ -78,7 +78,7 @@ func main() {
 		ticker := time.NewTicker(24 * time.Hour)
 		defer ticker.Stop()
 
-		for range ticker.C{
+		for range ticker.C {
 			if count, err := pgRepo.DeleteExpiredHackathons(); err != nil {
 				fmt.Printf("Error deleting expired hackathons: %v\n", err)
 			} else {
@@ -87,25 +87,28 @@ func main() {
 		}
 	}()
 
-
-
-	//scrappers
-	//DEVFOLIO
+	// Scrapers: run once on startup, then every 12 hours
 	go func() {
-		if err := scraper.RunDevfolioScraper(db); err != nil {
-			fmt.Printf("Scraper Error: %v\n", err)
+		runAllScrapers := func() {
+			if err := scraper.RunDevfolioScraper(db); err != nil {
+				fmt.Printf("Devfolio Scraper Error: %v\n", err)
+			}
+			if err := scraper.RunMLHScraper(db); err != nil {
+				fmt.Printf("MLH Scraper Error: %v\n", err)
+			}
+			if err := scraper.RunUnstopScraper(db); err != nil {
+				fmt.Printf("Unstop Scraper Error: %v\n", err)
+			}
 		}
-	}()
-	//MLH
-	go func() {
-		if err := scraper.RunMLHScraper(db); err != nil {
-			fmt.Printf("❌ MLH Scraper Error: %v\n", err)
-		}
-	}()
-	//UNSTOP
-	go func() {
-		if err := scraper.RunUnstopScraper(db); err != nil {
-			fmt.Printf("❌ Unstop Scraper Error: %v\n", err)
+
+		runAllScrapers()
+
+		ticker := time.NewTicker(12 * time.Hour)
+		defer ticker.Stop()
+
+		for range ticker.C {
+			fmt.Println("Scheduled scraper cycle starting...")
+			runAllScrapers()
 		}
 	}()
 
