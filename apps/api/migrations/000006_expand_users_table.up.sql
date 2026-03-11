@@ -1,0 +1,7 @@
+ALTER TABLE users 
+ADD COLUMN headline VARCHAR(255),
+ADD COLUMN location VARCHAR(255),
+ADD COLUMN github_handle VARCHAR(100),
+ADD COLUMN website_url VARCHAR(255),
+ADD COLUMN linkedin_url VARCHAR(255),
+ADD COLUMN twitter_url VARCHAR(255);
