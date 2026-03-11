@@ -2,12 +2,14 @@
 
 import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { AuthContextType, User } from "@/models/user";
+import { useRouter } from "next/navigation";
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const router = useRouter();
 
   const checkAuth = useCallback(async () => {
     setIsLoading(true);
@@ -35,8 +37,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [checkAuth]);
 
   const logout = async () => {
-    //TODO: Implement logout API call
-    setUser(null);
+    try {
+      await fetch("http://localhost:8080/v1/auth/logout", {
+        method: "POST",
+        credentials: "include",
+      });
+
+    } catch (error) {
+        console.error("Logout failed:", error);     
+    } finally{
+        setUser(null);
+        router.push("/");
+        router.refresh();
+    }
+    
   };
 
   const refreshUser = async () => {
