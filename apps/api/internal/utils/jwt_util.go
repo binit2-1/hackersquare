@@ -32,8 +32,6 @@ func GenerateJWT(userID string, email string) (string, error) {
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	fmt.Printf("DEBUG GENERATE: Secret is '%s'\n", os.Getenv("JWT_SECRET"))
-
 	return token.SignedString([]byte(secret))
 }
 
