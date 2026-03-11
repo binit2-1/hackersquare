@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/binit2-1/hackersquare/apps/api/internal/repository/pg"
 	scraper "github.com/binit2-1/hackersquare/apps/api/internal/scaper"
@@ -65,6 +66,28 @@ func main() {
 	mux.HandleFunc("GET /v1/auth/me", server.AuthMiddleware(authHandler.GetMe))
 
 	fmt.Printf("Starting server on port %s\n", port)
+
+	//cleanup
+	go func(){
+		if count, err := pgRepo.DeleteExpiredHackathons(); err != nil {
+			fmt.Printf("Error deleting expired hackathons: %v\n", err)
+		} else if count > 0 {
+			fmt.Printf("Startup Cleanup: Swept away %d expired hackathons\n", count)
+		}
+
+		ticker := time.NewTicker(24 * time.Hour)
+		defer ticker.Stop()
+
+		for range ticker.C{
+			if count, err := pgRepo.DeleteExpiredHackathons(); err != nil {
+				fmt.Printf("Error deleting expired hackathons: %v\n", err)
+			} else {
+				fmt.Printf("Scheduled Cleanup: Swept away %d expired hackathons\n", count)
+			}
+		}
+	}()
+
+
 
 	//scrappers
 	//DEVFOLIO

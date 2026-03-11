@@ -25,4 +25,5 @@ type SearchFilters struct {
 
 type HackathonRepository interface {
 	SearchHackathons(filters SearchFilters) ([]Hackathon, int, error)
+	DeleteExpiredHackathons() (int64, error)
 }

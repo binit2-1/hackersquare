@@ -130,3 +130,21 @@ func (h *PostgresEventRepo) SearchHackathons(filters domain.SearchFilters) ([]do
 
 	return hackathons, totalCount, nil
 }
+
+func(h *PostgresEventRepo) DeleteExpiredHackathons() (int64, error) {
+	query := `DELETE FROM hackathons WHERE end_date < CURRENT_DATE`
+
+
+	res, err := h.db.Exec(query)
+	if err != nil {
+		return 0, err
+	}
+
+	rowsAffected, err := res.RowsAffected()
+	if err != nil {
+		return 0, err
+	}
+
+	fmt.Printf("Deleted %d expired hackathons\n", rowsAffected)
+	return rowsAffected, nil
+}
