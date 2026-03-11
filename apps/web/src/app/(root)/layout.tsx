@@ -1,4 +1,5 @@
 import { AuthProvider } from "@/context/AuthContext";
+import { Navbar } from "@/components/navbar";
 
 export default function RootGroupLayout({
   children,
@@ -6,10 +7,9 @@ export default function RootGroupLayout({
   children: React.ReactNode;
 }) {
   return (
-    <>
-      <AuthProvider>
-        {children}
-      </AuthProvider>
-    </>
+    <AuthProvider>
+      <Navbar />
+      {children}
+    </AuthProvider>
   );
 }
