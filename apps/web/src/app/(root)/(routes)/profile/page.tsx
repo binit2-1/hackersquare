@@ -5,27 +5,31 @@ import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { GithubCalendar } from "@/components/ui/github-calendar";
 import {
   User,
   PencilSimple,
   MapPin,
-  Briefcase,
+  CalendarDots,
   GithubLogo,
   LinkedinLogo,
   XLogo,
   Globe,
   Star,
-  Code,
   Robot,
-  LinkSimple,
-  Check,
+  GitFork,
+  X,
   SpinnerGap,
+  ArrowSquareOut,
 } from "@phosphor-icons/react/dist/ssr";
 
-// Placeholder data — will be wired to Go backend
+const mockSkills = [
+  "React", "Next.js", "TypeScript", "Go", "PostgreSQL", "Tailwind CSS", "Node.js", "Git",
+];
+
 const mockPinnedRepos = [
   {
     id: 1,
@@ -33,25 +37,52 @@ const mockPinnedRepos = [
     desc: "A hackathon aggregator pulling from Devfolio, MLH, and Unstop into one clean feed.",
     language: "Go",
     stars: 34,
+    forks: 8,
     url: "#",
   },
   {
     id: 2,
-    name: "react-tiny-dom",
-    desc: "A lightweight React clone built from scratch to understand the virtual DOM.",
+    name: "Composter",
+    desc: "Personalised React Components Vault with a powerful CLI.",
     language: "JavaScript",
-    stars: 12,
+    stars: 14,
+    forks: 14,
+    url: "#",
+  },
+  {
+    id: 3,
+    name: "members-only",
+    desc: "An attempt to make an auth system by myself from scratch.",
+    language: "JavaScript",
+    stars: 3,
+    forks: 0,
+    url: "#",
+  },
+  {
+    id: 4,
+    name: "dumb-shell",
+    desc: "Tried making a shell by my own using C and system calls.",
+    language: "C",
+    stars: 2,
+    forks: 1,
     url: "#",
   },
 ];
+
+const LANG_COLORS: Record<string, string> = {
+  Go: "bg-sky-400",
+  JavaScript: "bg-yellow-400",
+  TypeScript: "bg-blue-500",
+  C: "bg-gray-500",
+  Python: "bg-green-500",
+  Rust: "bg-orange-600",
+};
 
 export default function ProfilePage() {
   const { user, isLoading, refreshUser } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [savingLinks, setSavingLinks] = useState(false);
 
-  // Form state — seeded from user context
   const [headline, setHeadline] = useState("");
   const [location, setLocation] = useState("");
   const [website, setWebsite] = useState("");
@@ -59,7 +90,6 @@ export default function ProfilePage() {
   const [twitter, setTwitter] = useState("");
   const [hydrated, setHydrated] = useState(false);
 
-  // Seed form state from user once loaded
   if (user && !hydrated) {
     setHeadline(user.headline || "");
     setLocation(user.location || "");
@@ -116,30 +146,6 @@ export default function ProfilePage() {
     }
   };
 
-  const handleSaveLinks = async () => {
-    setSavingLinks(true);
-    try {
-      const res = await fetch("http://localhost:8080/v1/users/profile", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({
-          headline,
-          location,
-          website_url: website,
-          linkedin_url: linkedin,
-          twitter_url: twitter,
-        }),
-      });
-      if (!res.ok) throw new Error("Failed to save links");
-      await refreshUser();
-    } catch (err) {
-      console.error("Links save error:", err);
-    } finally {
-      setSavingLinks(false);
-    }
-  };
-
   const handleConnectGitHub = () => {
     window.location.href = "http://localhost:8080/v1/auth/github/connect";
   };
@@ -151,177 +157,139 @@ export default function ProfilePage() {
     .slice(0, 2)
     .toUpperCase();
 
+  const joinDate = new Date().toLocaleDateString("en-US", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+
   return (
     <div className="min-h-screen bg-background">
-      <div className="max-w-196.5 mx-auto px-4 py-8 sm:py-12">
-        {/* ── Identity header ── */}
-        <div className="flex flex-col sm:flex-row sm:items-start gap-5 sm:gap-6">
-          <Avatar className="size-20 sm:size-24 shrink-0 text-xl sm:text-2xl font-bold border">
+      <div className="max-w-2xl mx-auto px-4 py-10 sm:py-14 space-y-8">
+
+        {/* ── Identity hero ── */}
+        <div className="flex flex-col items-center text-center gap-4">
+          <Avatar className="size-24 sm:size-28 text-2xl sm:text-3xl font-bold border-2 border-border shadow-sm">
             <AvatarFallback className="bg-muted text-foreground">
               {initials}
             </AvatarFallback>
           </Avatar>
 
-          <div className="flex-1 min-w-0 space-y-1.5">
-            <div className="flex items-start justify-between gap-3">
-              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight truncate">
-                {user.name}
-              </h1>
-              <Button
-                variant={isEditing ? "default" : "outline"}
-                size="sm"
-                className="shrink-0"
-                onClick={() => (isEditing ? handleSave() : setIsEditing(true))}
-                disabled={saving}
-              >
-                {saving ? (
-                  <SpinnerGap className="size-4 animate-spin" />
-                ) : isEditing ? (
-                  <>
-                    <Check className="size-4" />
-                    <span className="hidden sm:inline ml-1.5">Save</span>
-                  </>
-                ) : (
-                  <>
-                    <PencilSimple className="size-4" />
-                    <span className="hidden sm:inline ml-1.5">Edit</span>
-                  </>
-                )}
-              </Button>
+          <div className="space-y-1.5">
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
+              {user.name}
+            </h1>
+            <p className="text-sm text-muted-foreground max-w-md">
+              {headline || "No headline set"}
+            </p>
+            <div className="flex items-center justify-center gap-4 text-xs text-muted-foreground pt-1">
+              <span className="flex items-center gap-1">
+                <CalendarDots className="size-3.5" />
+                Joined {joinDate}
+              </span>
+              <span className="flex items-center gap-1">
+                <MapPin className="size-3.5" />
+                {location || "No location"}
+              </span>
             </div>
-
-            {isEditing ? (
-              <div className="space-y-2 max-w-sm">
-                <Input
-                  value={headline}
-                  onChange={(e) => setHeadline(e.target.value)}
-                  placeholder="Your one-liner"
-                  className="text-sm"
-                />
-                <Input
-                  value={location}
-                  onChange={(e) => setLocation(e.target.value)}
-                  placeholder="City, Country"
-                  className="text-sm"
-                />
-              </div>
-            ) : (
-              <>
-                <p className="text-sm text-muted-foreground flex items-center gap-1.5">
-                  <Briefcase className="size-3.5 shrink-0" />
-                  {headline || "No headline set"}
-                </p>
-                <p className="text-sm text-muted-foreground flex items-center gap-1.5">
-                  <MapPin className="size-3.5 shrink-0" />
-                  {location || "No location set"}
-                </p>
-              </>
-            )}
-
-            <p className="text-xs text-muted-foreground/60 pt-0.5">{user.email}</p>
           </div>
+
+          {/* Social icons */}
+          <div className="flex items-center gap-1.5">
+            {user.github_handle && (
+              <a href={`https://github.com/${user.github_handle}`} target="_blank" rel="noopener noreferrer">
+                <Button variant="ghost" size="icon" className="size-8 rounded-full">
+                  <GithubLogo className="size-4" />
+                </Button>
+              </a>
+            )}
+            {linkedin && (
+              <a href={linkedin} target="_blank" rel="noopener noreferrer">
+                <Button variant="ghost" size="icon" className="size-8 rounded-full">
+                  <LinkedinLogo className="size-4" />
+                </Button>
+              </a>
+            )}
+            {twitter && (
+              <a href={twitter} target="_blank" rel="noopener noreferrer">
+                <Button variant="ghost" size="icon" className="size-8 rounded-full">
+                  <XLogo className="size-4" />
+                </Button>
+              </a>
+            )}
+            {website && (
+              <a href={website} target="_blank" rel="noopener noreferrer">
+                <Button variant="ghost" size="icon" className="size-8 rounded-full">
+                  <Globe className="size-4" />
+                </Button>
+              </a>
+            )}
+          </div>
+
+          {/* Skill badges */}
+          <div className="flex flex-wrap items-center justify-center gap-1.5 max-w-md">
+            {mockSkills.map((skill) => (
+              <Badge key={skill} variant="secondary" className="text-xs font-normal px-2.5 py-0.5">
+                {skill}
+              </Badge>
+            ))}
+          </div>
+
+          {/* Edit Profile button */}
+          <Button
+            variant="outline"
+            size="sm"
+            className="mt-1"
+            onClick={() => setIsEditing(!isEditing)}
+          >
+            <PencilSimple className="size-3.5 mr-1.5" />
+            Edit Profile
+          </Button>
         </div>
 
-        <Separator className="my-6 sm:my-8" />
-
-        {/* ── Tabs ── */}
-        <Tabs defaultValue="portfolio" className="w-full">
-          <TabsList variant="line" className="mb-6">
-            <TabsTrigger value="portfolio">Portfolio</TabsTrigger>
-            <TabsTrigger value="connections">Connections</TabsTrigger>
-          </TabsList>
-
-          {/* ── Portfolio tab ── */}
-          <TabsContent value="portfolio" className="space-y-8">
-            {/* AI Skill Summary */}
-            <Card className="border-dashed">
-              <CardContent className="p-5 space-y-2">
-                <h3 className="text-sm font-semibold flex items-center gap-2">
-                  <Robot className="size-4 text-muted-foreground" />
-                  AI Skill Summary
-                </h3>
-                <p className="text-sm text-muted-foreground leading-relaxed">
-                  Strong fundamentals in React and Next.js. Recently demonstrating
-                  growth in backend systems using Go and PostgreSQL. Actively
-                  participating in open-source tooling.
-                </p>
-              </CardContent>
-            </Card>
-
-            {/* Pinned Projects */}
-            <div>
-              <h2 className="text-sm font-semibold flex items-center gap-2 mb-4">
-                <GithubLogo className="size-4" />
-                Top Projects
-              </h2>
+        {/* ── Inline edit panel ── */}
+        {isEditing && (
+          <Card>
+            <CardContent className="p-5 space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-semibold">Edit Profile</h3>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="size-7"
+                  onClick={() => setIsEditing(false)}
+                >
+                  <X className="size-4" />
+                </Button>
+              </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {mockPinnedRepos.map((repo) => (
-                  <a
-                    key={repo.id}
-                    href={repo.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="group block"
-                  >
-                    <Card className="h-full transition-shadow group-hover:shadow-md">
-                      <CardContent className="p-4 space-y-2.5">
-                        <div className="flex items-start justify-between gap-2">
-                          <span className="text-sm font-semibold text-foreground group-hover:underline underline-offset-2 truncate">
-                            {repo.name}
-                          </span>
-                          <span className="flex items-center gap-1 text-xs text-muted-foreground shrink-0">
-                            <Star className="size-3.5" weight="fill" />
-                            {repo.stars}
-                          </span>
-                        </div>
-                        <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2">
-                          {repo.desc}
-                        </p>
-                        <span className="inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground bg-muted px-2 py-0.5 rounded">
-                          <Code className="size-3" />
-                          {repo.language}
-                        </span>
-                      </CardContent>
-                    </Card>
-                  </a>
-                ))}
-              </div>
-            </div>
-          </TabsContent>
-
-          {/* ── Connections tab ── */}
-          <TabsContent value="connections" className="space-y-5 max-w-lg">
-            {/* GitHub connection */}
-            <Card>
-              <CardContent className="p-4 flex items-center justify-between gap-4">
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="size-9 rounded-full bg-muted flex items-center justify-center shrink-0">
-                    <GithubLogo className="size-5" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium">GitHub</p>
-                    <p className="text-xs text-muted-foreground truncate">
-                      Required for projects &amp; AI analysis
-                    </p>
-                  </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-muted-foreground">Headline</label>
+                  <Input
+                    value={headline}
+                    onChange={(e) => setHeadline(e.target.value)}
+                    placeholder="Frontend Developer & Builder"
+                    className="text-sm"
+                  />
                 </div>
-                <Button size="sm" onClick={handleConnectGitHub}>
-                  Connect
-                </Button>
-              </CardContent>
-            </Card>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-muted-foreground">Location</label>
+                  <Input
+                    value={location}
+                    onChange={(e) => setLocation(e.target.value)}
+                    placeholder="Bengaluru, India"
+                    className="text-sm"
+                  />
+                </div>
+              </div>
 
-            {/* Social links */}
-            <Card>
-              <CardContent className="p-4 space-y-4">
-                <h3 className="text-sm font-semibold flex items-center gap-2">
-                  <LinkSimple className="size-4 text-muted-foreground" />
-                  Social Links
-                </h3>
+              <Separator />
 
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2.5">
+              <div className="space-y-3">
+                <p className="text-xs font-medium text-muted-foreground">Social Links</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="flex items-center gap-2">
                     <Globe className="size-4 text-muted-foreground shrink-0" />
                     <Input
                       value={website}
@@ -330,33 +298,152 @@ export default function ProfilePage() {
                       className="text-sm"
                     />
                   </div>
-                  <div className="flex items-center gap-2.5">
+                  <div className="flex items-center gap-2">
                     <LinkedinLogo className="size-4 text-muted-foreground shrink-0" />
                     <Input
                       value={linkedin}
                       onChange={(e) => setLinkedin(e.target.value)}
-                      placeholder="https://linkedin.com/in/username"
+                      placeholder="https://linkedin.com/in/you"
                       className="text-sm"
                     />
                   </div>
-                  <div className="flex items-center gap-2.5">
+                  <div className="flex items-center gap-2">
                     <XLogo className="size-4 text-muted-foreground shrink-0" />
                     <Input
                       value={twitter}
                       onChange={(e) => setTwitter(e.target.value)}
-                      placeholder="https://x.com/username"
+                      placeholder="https://x.com/you"
                       className="text-sm"
                     />
                   </div>
                 </div>
+              </div>
 
-                <Button size="sm" className="w-full" onClick={handleSaveLinks} disabled={savingLinks}>
-                  {savingLinks ? <SpinnerGap className="size-4 animate-spin" /> : "Save Links"}
+              <div className="flex items-center gap-2 pt-1">
+                <Button size="sm" onClick={handleSave} disabled={saving} className="min-w-24">
+                  {saving ? <SpinnerGap className="size-4 animate-spin" /> : "Save Changes"}
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => setIsEditing(false)}>
+                  Cancel
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        <Separator />
+
+        {/* ── AI Skill Summary ── */}
+        <section className="space-y-3">
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+            <Robot className="size-3.5" />
+            AI Skill Summary
+          </h2>
+          <Card className="border-dashed">
+            <CardContent className="p-4">
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                Strong fundamentals in React and Next.js. Recently demonstrating
+                growth in backend systems using Go and PostgreSQL. Actively
+                participating in open-source tooling.
+              </p>
+            </CardContent>
+          </Card>
+        </section>
+
+        {/* ── GitHub Contributions ── */}
+        <section className="space-y-3">
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+            <GithubLogo className="size-3.5" />
+            GitHub
+          </h2>
+
+          {user.github_handle ? (
+            <Card>
+              <CardContent className="p-4 sm:p-5 overflow-x-auto">
+                <GithubCalendar
+                  username={user.github_handle}
+                  colorSchema="green"
+                  shape="rounded"
+                  showTotal
+                />
+              </CardContent>
+            </Card>
+          ) : (
+            <Card className="border-dashed">
+              <CardContent className="p-6 flex flex-col items-center gap-3 text-center">
+                <div className="size-10 rounded-full bg-muted flex items-center justify-center">
+                  <GithubLogo className="size-5 text-muted-foreground" />
+                </div>
+                <div className="space-y-1">
+                  <p className="text-sm font-medium">Connect your GitHub</p>
+                  <p className="text-xs text-muted-foreground max-w-xs">
+                    Link your account to display contributions, pinned repos,
+                    and get an AI skill analysis.
+                  </p>
+                </div>
+                <Button size="sm" onClick={handleConnectGitHub} className="mt-1">
+                  <GithubLogo className="size-4 mr-1.5" />
+                  Connect GitHub
                 </Button>
               </CardContent>
             </Card>
-          </TabsContent>
-        </Tabs>
+          )}
+        </section>
+
+        {/* ── Pinned Repositories ── */}
+        <section className="space-y-3">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+              <GithubLogo className="size-3.5" />
+              Pinned Repositories
+            </h2>
+            <span className="text-xs text-muted-foreground">
+              {mockPinnedRepos.length} repos
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {mockPinnedRepos.map((repo) => (
+              <a
+                key={repo.id}
+                href={repo.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group block"
+              >
+                <Card className="h-full transition-all group-hover:shadow-md group-hover:border-foreground/15">
+                  <CardContent className="p-4 flex flex-col justify-between h-full gap-3">
+                    <div className="space-y-1.5">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-sm font-semibold text-foreground truncate group-hover:underline underline-offset-2">
+                          {repo.name}
+                        </span>
+                        <ArrowSquareOut className="size-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                      </div>
+                      <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2">
+                        {repo.desc}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                      <span className="flex items-center gap-1.5">
+                        <span className={`size-2 rounded-full ${LANG_COLORS[repo.language] || "bg-gray-400"}`} />
+                        {repo.language}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <Star className="size-3" />
+                        {repo.stars}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <GitFork className="size-3" />
+                        {repo.forks}
+                      </span>
+                    </div>
+                  </CardContent>
+                </Card>
+              </a>
+            ))}
+          </div>
+        </section>
       </div>
     </div>
   );
