@@ -1,8 +1,11 @@
 package server
 
 import (
+	"bytes"
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/binit2-1/hackersquare/apps/api/internal/domain"
@@ -188,4 +191,90 @@ func (h *AuthHandler) UpdateProfile(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(map[string]string{"message": "Profile updated successfully"})
+}
+
+func (h *AuthHandler) ConnectGithub(w http.ResponseWriter, r *http.Request){
+	clientID := os.Getenv("GITHUB_CLIENT_ID")
+	redirectURL := fmt.Sprintf("https://github.com/login/oauth/authorize?client_id=%s&scope=read:user", clientID)
+	http.Redirect(w, r, redirectURL, http.StatusTemporaryRedirect)
+}
+
+func (h *AuthHandler) GithubCallback(w http.ResponseWriter, r *http.Request){
+	userID, ok := r.Context().Value("userID").(string)
+	if !ok || userID == "" {
+		http.Error(w, "Unauthorized: Session lost during GitHub redirect", http.StatusUnauthorized)
+		return
+	}
+
+	code := r.URL.Query().Get("code")
+	if code == "" {
+		http.Error(w, "Failed to get authorization code from github", http.StatusBadRequest)
+		return
+	}
+
+	tokenReqBody, _ := json.Marshal(map[string]string{
+		"client_id":     os.Getenv("GITHUB_CLIENT_ID"),
+		"client_secret": os.Getenv("GITHUB_CLIENT_SECRET"),
+		"code":          code,
+	})
+
+	tokenReq, _ := http.NewRequest("POST", "https://github.com/login/oauth/access_token", bytes.NewBuffer(tokenReqBody))
+	tokenReq.Header.Set("Content-Type", "application/json")
+	tokenReq.Header.Set("Accept", "application/json")
+
+	tokenResp, err := http.DefaultClient.Do(tokenReq)
+	if err != nil || tokenResp.StatusCode != http.StatusOK {
+		http.Error(w, "Failed to exchange code for access token", http.StatusInternalServerError)
+		return
+	}
+	defer tokenResp.Body.Close()
+
+	var tokenData struct {
+		AccessToken      string `json:"access_token"`
+		Error            string `json:"error"`
+		ErrorDescription string `json:"error_description"`
+	}
+	
+	if err := json.NewDecoder(tokenResp.Body).Decode(&tokenData); err != nil {
+		http.Error(w, "Failed to parse token response", http.StatusInternalServerError)
+		return
+	}
+
+	if tokenData.Error != "" {
+		http.Error(w, fmt.Sprintf("GitHub Error: %s", tokenData.ErrorDescription), http.StatusUnauthorized)
+		return
+	}
+
+	if tokenData.AccessToken == "" {
+		http.Error(w, "Failed to retrieve access token", http.StatusUnauthorized)
+		return
+	}
+
+	userReq, _ := http.NewRequest("GET", "https://api.github.com/user", nil)
+	userReq.Header.Set("Authorization", "Bearer "+tokenData.AccessToken)
+
+	userResp, err := http.DefaultClient.Do(userReq)
+	if err != nil {
+		http.Error(w, "Failed to fetch GitHub profile", http.StatusInternalServerError)
+		return
+	}
+	defer userResp.Body.Close()
+
+	var githubUser struct {
+		Login string `json:"login"` 
+	}
+	
+	if err := json.NewDecoder(userResp.Body).Decode(&githubUser); err != nil {
+		http.Error(w, "Failed to parse GitHub user response", http.StatusInternalServerError)
+		return
+	}
+
+	// 3. Save the handle to your PostgreSQL Database
+	err = h.UserRepo.LinkGithubHandle(userID, githubUser.Login)
+	if err != nil {
+		http.Error(w, "Failed to save GitHub handle to database", http.StatusInternalServerError)
+		return
+	}
+
+	http.Redirect(w, r, "http://localhost:3000/profile", http.StatusTemporaryRedirect)
 }

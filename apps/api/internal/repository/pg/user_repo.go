@@ -116,3 +116,9 @@ func (h *PostgresUserRepo) UpdateUserProfile(userID string, data domain.ProfileU
 
 	return nil
 }
+
+func (h *PostgresUserRepo) LinkGithubHandle(userID string, githubHandle string) error {
+	query := `UPDATE users SET github_handle = $1, updated_at = NOW() WHERE id = $2`
+	_, err := h.db.Exec(query, githubHandle, userID)
+	return err
+}

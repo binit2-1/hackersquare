@@ -68,6 +68,10 @@ func main() {
 	//profile
 	mux.HandleFunc("PUT /v1/users/profile", server.AuthMiddleware(authHandler.UpdateProfile))
 
+	//oAuth
+	mux.HandleFunc("GET /v1/auth/github/connect", authHandler.ConnectGithub)
+	mux.HandleFunc("GET /v1/auth/github/callback", server.AuthMiddleware(authHandler.GithubCallback))
+
 	fmt.Printf("Starting server on port %s\n", port)
 
 	//cleanup

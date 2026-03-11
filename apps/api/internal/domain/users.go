@@ -30,4 +30,5 @@ type UserRepository interface {
 	GetUserByEmail(email string) (*User, error)
 	GetUserByID(id string) (*User, error)
 	UpdateUserProfile(userID string, data ProfileUpdateRequest) error
+	LinkGithubHandle(userID string, githubHandle string) error
 }
