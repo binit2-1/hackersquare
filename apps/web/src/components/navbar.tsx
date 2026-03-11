@@ -444,6 +444,13 @@ export function Navbar() {
                 >
                   Logout
                 </DropdownMenuItem>
+                <DropdownMenuItem
+                  onSelect={() => {
+                    router.push("/profile");
+                  }}
+                >
+                  Profile
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (
