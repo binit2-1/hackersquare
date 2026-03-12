@@ -18,65 +18,14 @@ import {
   LinkedinLogo,
   XLogo,
   Globe,
-  Star,
   Robot,
-  GitFork,
   X,
   SpinnerGap,
-  ArrowSquareOut,
 } from "@phosphor-icons/react/dist/ssr";
 
 const mockSkills = [
   "React", "Next.js", "TypeScript", "Go", "PostgreSQL", "Tailwind CSS", "Node.js", "Git",
 ];
-
-const mockPinnedRepos = [
-  {
-    id: 1,
-    name: "hackersquare",
-    desc: "A hackathon aggregator pulling from Devfolio, MLH, and Unstop into one clean feed.",
-    language: "Go",
-    stars: 34,
-    forks: 8,
-    url: "#",
-  },
-  {
-    id: 2,
-    name: "Composter",
-    desc: "Personalised React Components Vault with a powerful CLI.",
-    language: "JavaScript",
-    stars: 14,
-    forks: 14,
-    url: "#",
-  },
-  {
-    id: 3,
-    name: "members-only",
-    desc: "An attempt to make an auth system by myself from scratch.",
-    language: "JavaScript",
-    stars: 3,
-    forks: 0,
-    url: "#",
-  },
-  {
-    id: 4,
-    name: "dumb-shell",
-    desc: "Tried making a shell by my own using C and system calls.",
-    language: "C",
-    stars: 2,
-    forks: 1,
-    url: "#",
-  },
-];
-
-const LANG_COLORS: Record<string, string> = {
-  Go: "bg-sky-400",
-  JavaScript: "bg-yellow-400",
-  TypeScript: "bg-blue-500",
-  C: "bg-gray-500",
-  Python: "bg-green-500",
-  Rust: "bg-orange-600",
-};
 
 export default function ProfilePage() {
   const { user, isLoading, refreshUser } = useAuth();
@@ -114,7 +63,7 @@ export default function ProfilePage() {
           <User className="size-10 mx-auto text-muted-foreground" />
           <p className="text-lg font-medium">Sign in to view your profile</p>
           <p className="text-sm text-muted-foreground">
-            Your profile, projects, and connections live here.
+			Your profile and connections live here.
           </p>
         </div>
       </div>
@@ -377,8 +326,7 @@ export default function ProfilePage() {
                 <div className="space-y-1">
                   <p className="text-sm font-medium">Connect your GitHub</p>
                   <p className="text-xs text-muted-foreground max-w-xs">
-                    Link your account to display contributions, pinned repos,
-                    and get an AI skill analysis.
+          Link your account to display contributions and get an AI skill analysis.
                   </p>
                 </div>
                 <Button size="sm" onClick={handleConnectGitHub} className="mt-1">
@@ -388,61 +336,6 @@ export default function ProfilePage() {
               </CardContent>
             </Card>
           )}
-        </section>
-
-        {/* ── Pinned Repositories ── */}
-        <section className="space-y-3">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-              <GithubLogo className="size-3.5" />
-              Pinned Repositories
-            </h2>
-            <span className="text-xs text-muted-foreground">
-              {mockPinnedRepos.length} repos
-            </span>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {mockPinnedRepos.map((repo) => (
-              <a
-                key={repo.id}
-                href={repo.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="group block"
-              >
-                <Card className="h-full transition-all group-hover:shadow-md group-hover:border-foreground/15">
-                  <CardContent className="p-4 flex flex-col justify-between h-full gap-3">
-                    <div className="space-y-1.5">
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-sm font-semibold text-foreground truncate group-hover:underline underline-offset-2">
-                          {repo.name}
-                        </span>
-                        <ArrowSquareOut className="size-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
-                      </div>
-                      <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2">
-                        {repo.desc}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                      <span className="flex items-center gap-1.5">
-                        <span className={`size-2 rounded-full ${LANG_COLORS[repo.language] || "bg-gray-400"}`} />
-                        {repo.language}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Star className="size-3" />
-                        {repo.stars}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <GitFork className="size-3" />
-                        {repo.forks}
-                      </span>
-                    </div>
-                  </CardContent>
-                </Card>
-              </a>
-            ))}
-          </div>
         </section>
       </div>
     </div>
