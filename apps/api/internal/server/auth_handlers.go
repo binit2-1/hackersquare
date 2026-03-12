@@ -193,13 +193,13 @@ func (h *AuthHandler) UpdateProfile(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]string{"message": "Profile updated successfully"})
 }
 
-func (h *AuthHandler) ConnectGithub(w http.ResponseWriter, r *http.Request){
+func (h *AuthHandler) ConnectGithub(w http.ResponseWriter, r *http.Request) {
 	clientID := os.Getenv("GITHUB_CLIENT_ID")
 	redirectURL := fmt.Sprintf("https://github.com/login/oauth/authorize?client_id=%s&scope=read:user", clientID)
 	http.Redirect(w, r, redirectURL, http.StatusTemporaryRedirect)
 }
 
-func (h *AuthHandler) GithubCallback(w http.ResponseWriter, r *http.Request){
+func (h *AuthHandler) GithubCallback(w http.ResponseWriter, r *http.Request) {
 	userID, ok := r.Context().Value("userID").(string)
 	if !ok || userID == "" {
 		http.Error(w, "Unauthorized: Session lost during GitHub redirect", http.StatusUnauthorized)
@@ -234,7 +234,7 @@ func (h *AuthHandler) GithubCallback(w http.ResponseWriter, r *http.Request){
 		Error            string `json:"error"`
 		ErrorDescription string `json:"error_description"`
 	}
-	
+
 	if err := json.NewDecoder(tokenResp.Body).Decode(&tokenData); err != nil {
 		http.Error(w, "Failed to parse token response", http.StatusInternalServerError)
 		return
@@ -261,9 +261,9 @@ func (h *AuthHandler) GithubCallback(w http.ResponseWriter, r *http.Request){
 	defer userResp.Body.Close()
 
 	var githubUser struct {
-		Login string `json:"login"` 
+		Login string `json:"login"`
 	}
-	
+
 	if err := json.NewDecoder(userResp.Body).Decode(&githubUser); err != nil {
 		http.Error(w, "Failed to parse GitHub user response", http.StatusInternalServerError)
 		return

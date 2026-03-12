@@ -10,6 +10,9 @@ build:
 start:
 	@./bin/api
 
+format:
+	@go fmt ./...
+
 db-it:
 	@docker exec -it postgres psql -U hackersquare-admin -d hackersquare-dev-db
 
@@ -29,3 +32,4 @@ db-force:
 # Usage: make db-create-migration name=add_users_table
 db-create-migration:
 	@migrate create -ext sql -dir ./migrations -seq $(name)
+
