@@ -69,6 +69,8 @@ func main() {
 	mux.HandleFunc("PUT /v1/users/profile", server.AuthMiddleware(authHandler.UpdateProfile))
 
 	//oAuth
+	mux.HandleFunc("GET /v1/auth/github/login", authHandler.GithubLogin)
+	mux.HandleFunc("GET /v1/auth/github/login/callback", authHandler.GithubLoginCallback)
 	mux.HandleFunc("GET /v1/auth/github/connect", authHandler.ConnectGithub)
 	mux.HandleFunc("GET /v1/auth/github/callback", server.AuthMiddleware(authHandler.GithubCallback))
 

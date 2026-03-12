@@ -2,6 +2,8 @@ package server
 
 import (
 	"bytes"
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -195,7 +197,8 @@ func (h *AuthHandler) UpdateProfile(w http.ResponseWriter, r *http.Request) {
 
 func (h *AuthHandler) ConnectGithub(w http.ResponseWriter, r *http.Request) {
 	clientID := os.Getenv("GITHUB_CLIENT_ID")
-	redirectURL := fmt.Sprintf("https://github.com/login/oauth/authorize?client_id=%s&scope=read:user", clientID)
+	redirectURI := "http://localhost:8080/v1/auth/github/callback"
+	redirectURL := fmt.Sprintf("https://github.com/login/oauth/authorize?client_id=%s&scope=read:user&redirect_uri=%s", clientID, redirectURI)
 	http.Redirect(w, r, redirectURL, http.StatusTemporaryRedirect)
 }
 
@@ -277,4 +280,121 @@ func (h *AuthHandler) GithubCallback(w http.ResponseWriter, r *http.Request) {
 	}
 
 	http.Redirect(w, r, "http://localhost:3000/profile", http.StatusTemporaryRedirect)
+}
+
+func (h *AuthHandler) GithubLogin(w http.ResponseWriter, r *http.Request) {
+	clientID := os.Getenv("GITHUB_CLIENT_ID")
+	redirectURI := "http://localhost:8080/v1/auth/github/login/callback"
+	redirectURL := fmt.Sprintf("https://github.com/login/oauth/authorize?client_id=%s&scope=read:user,user:email&redirect_uri=%s", clientID, redirectURI)
+	http.Redirect(w, r, redirectURL, http.StatusTemporaryRedirect)
+}
+
+func (h *AuthHandler) GithubLoginCallback(w http.ResponseWriter, r *http.Request) {
+	code := r.URL.Query().Get("code")
+	if code == "" {
+		http.Redirect(w, r, "http://localhost:3000?error=missing_code", http.StatusTemporaryRedirect)
+		return
+	}
+
+	tokenReqBody, _ := json.Marshal(map[string]string{
+		"client_id":     os.Getenv("GITHUB_CLIENT_ID"),
+		"client_secret": os.Getenv("GITHUB_CLIENT_SECRET"),
+		"code":          code,
+	})
+
+	tokenReq, _ := http.NewRequest("POST", "https://github.com/login/oauth/access_token", bytes.NewBuffer(tokenReqBody))
+	tokenReq.Header.Set("Content-Type", "application/json")
+	tokenReq.Header.Set("Accept", "application/json")
+
+	tokenResp, err := http.DefaultClient.Do(tokenReq)
+	if err != nil {
+		http.Redirect(w, r, "http://localhost:3000?error=github_unreachable", http.StatusTemporaryRedirect)
+		return
+	}
+	defer tokenResp.Body.Close()
+
+	var tokenData struct {
+		AccessToken string `json:"access_token"`
+	}
+	json.NewDecoder(tokenResp.Body).Decode(&tokenData)
+
+	if tokenData.AccessToken == "" {
+		http.Redirect(w, r, "http://localhost:3000?error=no_token", http.StatusTemporaryRedirect)
+		return
+	}
+
+	userReq, _ := http.NewRequest("GET", "https://api.github.com/user", nil)
+	userReq.Header.Set("Authorization", "Bearer "+tokenData.AccessToken)
+	userResp, err := http.DefaultClient.Do(userReq)
+	if err != nil || userResp == nil {
+		http.Redirect(w, r, "http://localhost:3000?error=failed_to_fetch_user", http.StatusTemporaryRedirect)
+		return
+	}
+	defer userResp.Body.Close()
+
+	var githubUser struct {
+		Login string `json:"login"`
+		Name  string `json:"name"`
+	}
+	json.NewDecoder(userResp.Body).Decode(&githubUser)
+
+	emailReq, _ := http.NewRequest("GET", "https://api.github.com/user/emails", nil)
+	emailReq.Header.Set("Authorization", "Bearer "+tokenData.AccessToken)
+	emailResp, err := http.DefaultClient.Do(emailReq)
+	if err != nil {
+		http.Redirect(w, r, "http://localhost:3000?error=failed_to_fetch_emails", http.StatusTemporaryRedirect)
+		return
+	}
+	defer emailResp.Body.Close()
+
+	var emails []struct {
+		Email    string `json:"email"`
+		Primary  bool   `json:"primary"`
+		Verified bool   `json:"verified"`
+	}
+	json.NewDecoder(emailResp.Body).Decode(&emails)
+
+	var primaryEmail string
+	for _, e := range emails {
+		if e.Primary && e.Verified {
+			primaryEmail = e.Email
+			break
+		}
+	}
+
+	if primaryEmail == "" {
+		http.Redirect(w, r, "http://localhost:3000?error=no_verified_email", http.StatusTemporaryRedirect)
+		return
+	}
+
+	user, err := h.UserRepo.GetUserByEmail(primaryEmail)
+	if user == nil {
+		name := githubUser.Name
+		if name == "" {
+			name = githubUser.Login
+		}
+
+		randomBytes := make([]byte, 16)
+		rand.Read(randomBytes)
+		dummyPassword := hex.EncodeToString(randomBytes)
+
+		newUser := &domain.User{
+			Name:         name,
+			Email:        primaryEmail,
+			PasswordHash: dummyPassword,
+		}
+
+		err := h.UserRepo.CreateUser(newUser)
+		if err != nil {
+			http.Redirect(w, r, "http://localhost:3000?error=account_creation_failed", http.StatusTemporaryRedirect)
+			return
+		}
+
+		_ = h.UserRepo.LinkGithubHandle(newUser.ID, githubUser.Login)
+		user = newUser
+	}
+
+	h.setAuthCookie(w, user)
+	http.Redirect(w, r, "http://localhost:3000", http.StatusTemporaryRedirect)
+
 }
