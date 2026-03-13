@@ -103,7 +103,7 @@ func (h *AuthHandler) setAuthCookie(w http.ResponseWriter, user *domain.User) {
 		Expires:  time.Now().Add(24 * time.Hour),
 		HttpOnly: true,
 		Secure:   true,
-		SameSite: http.SameSiteLaxMode,
+		SameSite: http.SameSiteNoneMode,
 	}
 
 	http.SetCookie(w, cookie)
@@ -164,7 +164,7 @@ func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 		Expires:  time.Unix(0, 0),
 		HttpOnly: true,
 		Secure:   true,
-		SameSite: http.SameSiteLaxMode,
+		SameSite: http.SameSiteNoneMode,
 	}
 
 	http.SetCookie(w, cookie)
