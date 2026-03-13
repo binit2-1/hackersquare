@@ -3,7 +3,7 @@ import { HackathonProps } from '@/models/hackathon';
 import { useAuth } from '@/context/AuthContext';
 
 const STORAGE_KEY = 'hack-bookmarks';
-const API_BASE_URL = 'http://localhost:8080';
+const API_BASE_URL = `${process.env.NEXT_PUBLIC_API_URL}` || 'http://localhost:8080';
 
 // Global state to sync across all hook instances
 let globalBookmarks: HackathonProps[] = [];

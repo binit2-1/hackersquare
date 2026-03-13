@@ -14,8 +14,8 @@ const fetchHackathons = async (
   queryString: string,
 ): Promise<SearchResponse> => {
   const url = queryString 
-    ? `http://localhost:8080/v1/search?${queryString}`
-    : `http://localhost:8080/v1/search`;
+    ? `${process.env.NEXT_PUBLIC_API_URL}/v1/search?${queryString}`
+    : `${process.env.NEXT_PUBLIC_API_URL}/v1/search`;
   const response = await fetch(url, {
     cache: "no-store",
   });

@@ -82,7 +82,7 @@ export default function AuthModal({
     }
 
     try{
-      const res = await fetch(`http://localhost:8080${endpoint}`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}${endpoint}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -106,7 +106,7 @@ export default function AuthModal({
   };
 
   const handleOAuth = () => {
-    window.location.href = "http://localhost:8080/v1/auth/github/login";
+    window.location.href = `${process.env.NEXT_PUBLIC_API_URL}/v1/auth/github/login`;
   };
 
   return (
