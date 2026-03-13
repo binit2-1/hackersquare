@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { KeyboardEvent, useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,9 +23,7 @@ import {
   SpinnerGap,
 } from "@phosphor-icons/react/dist/ssr";
 
-const mockSkills = [
-  "React", "Next.js", "TypeScript", "Go", "PostgreSQL", "Tailwind CSS", "Node.js", "Git",
-];
+const TECH_STACK_STORAGE_PREFIX = "profile-tech-stack:";
 
 export default function ProfilePage() {
   const { user, isLoading, refreshUser } = useAuth();
@@ -37,16 +35,38 @@ export default function ProfilePage() {
   const [website, setWebsite] = useState("");
   const [linkedin, setLinkedin] = useState("");
   const [twitter, setTwitter] = useState("");
-  const [hydrated, setHydrated] = useState(false);
+  const [techStack, setTechStack] = useState<string[]>([]);
+  const [newSkill, setNewSkill] = useState("");
 
-  if (user && !hydrated) {
+  useEffect(() => {
+    if (!user) return;
+
     setHeadline(user.headline || "");
     setLocation(user.location || "");
     setWebsite(user.website_url || "");
     setLinkedin(user.linkedin_url || "");
     setTwitter(user.twitter_url || "");
-    setHydrated(true);
-  }
+
+    try {
+      const storedSkills = localStorage.getItem(`${TECH_STACK_STORAGE_PREFIX}${user.id}`);
+      if (!storedSkills) {
+        setTechStack([]);
+        return;
+      }
+
+      const parsedSkills = JSON.parse(storedSkills);
+      if (Array.isArray(parsedSkills)) {
+        setTechStack(parsedSkills.filter((skill): skill is string => typeof skill === "string"));
+      }
+    } catch {
+      setTechStack([]);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
+    localStorage.setItem(`${TECH_STACK_STORAGE_PREFIX}${user.id}`, JSON.stringify(techStack));
+  }, [techStack, user]);
 
   if (isLoading) {
     return (
@@ -93,6 +113,29 @@ export default function ProfilePage() {
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleAddSkill = () => {
+    const normalizedSkill = newSkill.trim();
+    if (!normalizedSkill) return;
+
+    const alreadyExists = techStack.some(
+      (skill) => skill.toLowerCase() === normalizedSkill.toLowerCase(),
+    );
+    if (alreadyExists) return;
+
+    setTechStack((prev) => [...prev, normalizedSkill]);
+    setNewSkill("");
+  };
+
+  const handleRemoveSkill = (skillToRemove: string) => {
+    setTechStack((prev) => prev.filter((skill) => skill !== skillToRemove));
+  };
+
+  const handleSkillInputKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key !== "Enter") return;
+    event.preventDefault();
+    handleAddSkill();
   };
 
   const handleConnectGitHub = () => {
@@ -177,11 +220,14 @@ export default function ProfilePage() {
 
           {/* Skill badges */}
           <div className="flex flex-wrap items-center justify-center gap-1.5 max-w-md">
-            {mockSkills.map((skill) => (
+            {techStack.map((skill) => (
               <Badge key={skill} variant="secondary" className="text-xs font-normal px-2.5 py-0.5">
                 {skill}
               </Badge>
             ))}
+            {techStack.length === 0 && (
+              <p className="text-xs text-muted-foreground">No tech stack added yet</p>
+            )}
           </div>
 
           {/* Edit Profile button */}
@@ -268,6 +314,43 @@ export default function ProfilePage() {
                 </div>
               </div>
 
+              <Separator />
+
+              <div className="space-y-3">
+                <p className="text-xs font-medium text-muted-foreground">Tech Stack</p>
+                <div className="flex items-center gap-2">
+                  <Input
+                    value={newSkill}
+                    onChange={(e) => setNewSkill(e.target.value)}
+                    onKeyDown={handleSkillInputKeyDown}
+                    placeholder="Add a skill (e.g. Next.js)"
+                    className="text-sm"
+                  />
+                  <Button type="button" size="sm" variant="secondary" onClick={handleAddSkill}>
+                    Add
+                  </Button>
+                </div>
+
+                <div className="flex flex-wrap gap-1.5">
+                  {techStack.map((skill) => (
+                    <Badge key={skill} variant="secondary" className="text-xs font-normal px-2 py-0.5">
+                      <span>{skill}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveSkill(skill)}
+                        className="ml-1.5 inline-flex items-center"
+                        aria-label={`Remove ${skill}`}
+                      >
+                        <X className="size-3" />
+                      </button>
+                    </Badge>
+                  ))}
+                  {techStack.length === 0 && (
+                    <p className="text-xs text-muted-foreground">Add a few technologies you work with.</p>
+                  )}
+                </div>
+              </div>
+
               <div className="flex items-center gap-2 pt-1">
                 <Button size="sm" onClick={handleSave} disabled={saving} className="min-w-24">
                   {saving ? <SpinnerGap className="size-4 animate-spin" /> : "Save Changes"}
@@ -299,7 +382,9 @@ export default function ProfilePage() {
           </Card>
         </section>
 
-        {/* ── GitHub Contributions ── */}
+        <Separator />
+
+        {/* GitHub graph without card container */}
         <section className="space-y-3">
           <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
             <GithubLogo className="size-3.5" />
@@ -307,34 +392,24 @@ export default function ProfilePage() {
           </h2>
 
           {user.github_handle ? (
-            <Card>
-              <CardContent className="p-4 sm:p-5 overflow-x-auto">
-                <GithubCalendar
-                  username={user.github_handle}
-                  colorSchema="green"
-                  shape="rounded"
-                  showTotal
-                />
-              </CardContent>
-            </Card>
+            <div className="overflow-x-auto py-1">
+              <GithubCalendar
+                username={user.github_handle}
+                colorSchema="green"
+                shape="rounded"
+                showTotal
+              />
+            </div>
           ) : (
-            <Card className="border-dashed">
-              <CardContent className="p-6 flex flex-col items-center gap-3 text-center">
-                <div className="size-10 rounded-full bg-muted flex items-center justify-center">
-                  <GithubLogo className="size-5 text-muted-foreground" />
-                </div>
-                <div className="space-y-1">
-                  <p className="text-sm font-medium">Connect your GitHub</p>
-                  <p className="text-xs text-muted-foreground max-w-xs">
-          Link your account to display contributions and get an AI skill analysis.
-                  </p>
-                </div>
-                <Button size="sm" onClick={handleConnectGitHub} className="mt-1">
-                  <GithubLogo className="size-4 mr-1.5" />
-                  Connect GitHub
-                </Button>
-              </CardContent>
-            </Card>
+            <div className="space-y-2">
+              <p className="text-xs text-muted-foreground">
+                Connect GitHub to display your contribution graph.
+              </p>
+              <Button size="sm" onClick={handleConnectGitHub}>
+                <GithubLogo className="size-4 mr-1.5" />
+                Connect GitHub
+              </Button>
+            </div>
           )}
         </section>
       </div>
