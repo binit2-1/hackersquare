@@ -1,16 +1,38 @@
 ![HackerSquare Banner](apps/web/public/banner.svg) 
 
-**The ultimate directory to discover, track, and apply to hackathons worldwide.**
+**Discover, filter, and bookmark hackathons in one clean place.**
 
-HackerSquare is a high-performance, automated platform designed for developers. Instead of manually checking dozens of university websites and fragmented Twitter feeds, HackerSquare uses custom background scrapers to aggregate global hackathon data—including exact dates, locations, and prize pools—into a single, unified calendar.
+HackerSquare is a web app that helps students, developers, and builders find hackathons without jumping across dozens of sites. It brings listings into one searchable experience so you can quickly decide what to apply for next.
+
+## What You Can Do
+
+- Browse hackathons from multiple sources in one feed
+- Search by keyword to find events that match your interests
+- Filter by status, location type, and prize range
+- Bookmark events to track the ones you care about
+- Open event pages and apply directly
+
+## Common Use Cases
+
+- Find upcoming hackathons for your next weekend build
+- Track online events if you cannot travel
+- Shortlist high-prize opportunities before deadlines
+- Maintain a personal bookmark list and revisit it anytime
+
+## Why HackerSquare
+
+- Faster discovery than manually checking many websites
+- Cleaner decision-making with consistent event cards
+- Personal workflow support with auth + bookmarks
+- Built for real hackathon hunters, not generic event browsing
+
+## Core Experience
+
+1. Open the app and search for what you want.
+2. Use filters to narrow the list.
+3. Bookmark events you like.
+4. Open the event and apply.
 
 
-
-## 🌟 Key Features
-
-- **Global Coverage**: Access a comprehensive directory of hackathons from around the world, all in one place.
-- **Automated Data Collection**: Our custom scrapers ensure that you get the most up-to-date information on hackathons without the hassle of manual searching.
-- **Detailed Listings**: Each hackathon entry includes essential details such as dates, locations, prize pools, and application deadlines.
-- **User-Friendly Interface**: Easily navigate through the calendar and filter hackathons based on your preferences.
-
-
+--- 
+*Built with ❤️ for the hacker community.*
