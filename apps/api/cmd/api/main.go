@@ -29,7 +29,7 @@ func main() {
 
 	port := os.Getenv("PORT")
 	if port == "" {
-		port = ":8080"
+		port = "8080"
 	}
 
 	db, err := sql.Open("pgx", dbConnectionURL)
@@ -121,7 +121,7 @@ func main() {
 		}
 	}()
 
-	if err := http.ListenAndServe(port, server.CORSMiddleware(mux)); err != nil {
+	if err := http.ListenAndServe(":"+port, server.CORSMiddleware(mux)); err != nil {
 		log.Fatalf("FATAL: Server crashed: %v", err)
 	}
 
