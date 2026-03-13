@@ -1,5 +1,5 @@
 # build go binary
-FROM golang:1.22-alpine AS builder
+FROM golang:1.25-alpine AS builder
 
 # install git and ca-certificates
 RUN apk update && apk add --no-cache git ca-certificates tzdata && update-ca-certificates
