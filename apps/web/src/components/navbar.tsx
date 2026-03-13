@@ -208,14 +208,14 @@ export function Navbar() {
           : "bg-background",
       )}
     >
-      <div className="flex h-14 items-center">
+      <div className="relative flex h-14 items-center">
         <div className="shrink-0 px-4 sm:px-6 lg:px-8">
           <Link href="/" className="block">
             <div className="h-8 w-8 rounded-full bg-primary" />
           </Link>
         </div>
 
-        <div className="flex-1 max-w-196.5 mx-auto flex items-center justify-between">
+        <div className="absolute left-1/2 top-1/2 z-0 flex w-[calc(100%-7.5rem)] max-w-196.5 -translate-x-1/2 -translate-y-1/2 items-center justify-between px-1 sm:w-[calc(100%-8.5rem)] sm:px-2 lg:w-full">
           <nav className="flex items-center gap-px">
             {navItems.map((item) => {
               const Icon = item.icon;
@@ -380,7 +380,7 @@ export function Navbar() {
           </CommandDialog>
         </div>
 
-        <div className="shrink-0 flex flex-row gap-4 px-4 sm:px-6 lg:px-8 items-center">
+        <div className="absolute right-4 top-1/2 z-10 flex -translate-y-1/2 flex-row items-center gap-4 sm:right-6 lg:right-8">
           {showAuthButton && showAuthActions ? (
             <Button
               className="inline-flex min-w-36 rounded-4xl px-4 justify-center"
