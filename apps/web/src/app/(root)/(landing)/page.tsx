@@ -24,6 +24,8 @@ const page = () => {
           "Hackathons in ...",
         ]}
         interval={2500}
+        onChange={() => {}}
+        icon={null}
         onSubmit={handleSubmit}
       />
     </div>
