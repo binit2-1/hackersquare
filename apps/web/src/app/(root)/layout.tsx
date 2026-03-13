@@ -1,5 +1,6 @@
 import { AuthProvider } from "@/context/AuthContext";
 import { Navbar } from "@/components/navbar";
+import { Suspense } from "react";
 
 export default function RootGroupLayout({
   children,
@@ -8,7 +9,9 @@ export default function RootGroupLayout({
 }) {
   return (
     <AuthProvider>
-      <Navbar />
+      <Suspense fallback={<div className="h-14 w-full" />}>
+        <Navbar />
+      </Suspense>
       {children}
     </AuthProvider>
   );

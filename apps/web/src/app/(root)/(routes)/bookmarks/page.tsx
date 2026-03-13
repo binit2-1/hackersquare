@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { Suspense, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { HackathonCard } from "@/components/hackathon-card";
 import {
@@ -16,7 +16,7 @@ import { useBookmarks } from "@/hooks/useBookmarks";
 
 const ITEMS_PER_PAGE = 10;
 
-const BookmarksPage = () => {
+const BookmarksPageContent = () => {
   const { bookmarks, mounted } = useBookmarks();
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -130,4 +130,10 @@ const BookmarksPage = () => {
   );
 };
 
-export default BookmarksPage;
+export default function BookmarksPage() {
+  return (
+    <Suspense fallback={null}>
+      <BookmarksPageContent />
+    </Suspense>
+  );
+}
