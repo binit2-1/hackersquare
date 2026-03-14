@@ -4,8 +4,6 @@
 
 <video src="apps/web/public/hackersquaredemo.mp4" controls width="100%"></video>
 
-If the embedded player does not render in your viewer, open the file directly: [HackerSquare Demo](apps/web/public/hackersquaredemo.mp4).
-
 
 **Discover, filter, and bookmark hackathons in one clean place.**
 
