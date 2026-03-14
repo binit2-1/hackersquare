@@ -1,6 +1,7 @@
 "use client";
 import { cn } from "@/lib/utils";
 import { HackathonProps } from "@/models/hackathon";
+import { Facehash } from "facehash";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -429,12 +430,17 @@ export function Navbar() {
             </DropdownMenu>
           ) : isAuthed ? (
             <DropdownMenu>
-              <DropdownMenuTrigger className="h-8 w-8 rounded-full p-0">
-                <Avatar className="h-8 w-8">
-                  <AvatarFallback className="bg-muted text-muted-foreground">
-                    <UserIcon className="h-4 w-4" weight="regular" />
-                  </AvatarFallback>
-                </Avatar>
+              <DropdownMenuTrigger className="rounded-full p-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                <Facehash
+                  name={user!.name}
+                  size={32}
+                  intensity3d="subtle"
+                  showInitial={true}
+                  variant="solid"
+                  enableBlink
+                  className="rounded-full text-black"
+                  colors={["#FFFFFF", "#FFFFFF", "#FFFFFF"]}
+                />
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-40">
                 <DropdownMenuItem
