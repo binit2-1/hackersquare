@@ -82,7 +82,7 @@ export default function AuthModal({
     }
 
     try{
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}${endpoint}`, {
+      const res = await fetch(`/api${endpoint}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -106,7 +106,7 @@ export default function AuthModal({
   };
 
   const handleOAuth = () => {
-    window.location.href = `${process.env.NEXT_PUBLIC_API_URL}/v1/auth/github/login`;
+    window.location.href = "/api/v1/auth/github/login";
   };
 
   return (

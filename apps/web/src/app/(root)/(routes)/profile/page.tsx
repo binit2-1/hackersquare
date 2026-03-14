@@ -94,7 +94,7 @@ export default function ProfilePage() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/v1/users/profile`, {
+      const res = await fetch(`/api/v1/users/profile`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -140,7 +140,7 @@ export default function ProfilePage() {
   };
 
   const handleConnectGitHub = () => {
-    window.location.href = `${process.env.NEXT_PUBLIC_API_URL}/v1/auth/github/connect`;
+    window.location.href = "/api/v1/auth/github/connect";
   };
 
 

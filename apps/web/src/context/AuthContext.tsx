@@ -14,7 +14,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const checkAuth = useCallback(async () => {
     setIsLoading(true);
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/v1/auth/me`, {
+      const res = await fetch(`/api/v1/auth/me`, {
         method: "GET",
         credentials: "include",
       });
@@ -38,7 +38,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = async () => {
     try {
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/v1/auth/logout`, {
+      await fetch(`/api/v1/auth/logout`, {
         method: "POST",
         credentials: "include",
       });
