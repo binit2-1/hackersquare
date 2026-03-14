@@ -203,7 +203,7 @@ func (h *AuthHandler) UpdateProfile(w http.ResponseWriter, r *http.Request) {
 
 func (h *AuthHandler) ConnectGithub(w http.ResponseWriter, r *http.Request) {
 	clientID := os.Getenv("GITHUB_CLIENT_ID")
-	redirectURI := os.Getenv("NEXT_PUBLIC_API_URL") + "/v1/auth/github/callback"
+	redirectURI := os.Getenv("NEXT_APP_BASE_URL") + "/api/v1/auth/github/callback"
 	redirectURL := fmt.Sprintf("https://github.com/login/oauth/authorize?client_id=%s&scope=read:user&redirect_uri=%s", clientID, redirectURI)
 	http.Redirect(w, r, redirectURL, http.StatusTemporaryRedirect)
 }
@@ -285,12 +285,12 @@ func (h *AuthHandler) GithubCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	http.Redirect(w, r, os.Getenv("NEXT_APP_BASE_URL")+"/profile", http.StatusTemporaryRedirect)
+	http.Redirect(w, r, "/profile", http.StatusTemporaryRedirect)
 }
 
 func (h *AuthHandler) GithubLogin(w http.ResponseWriter, r *http.Request) {
 	clientID := os.Getenv("GITHUB_CLIENT_ID")
-	redirectURI := os.Getenv("NEXT_PUBLIC_API_URL") + "/v1/auth/github/login/callback"
+	redirectURI := os.Getenv("NEXT_APP_BASE_URL") + "/api/v1/auth/github/login/callback"
 	redirectURL := fmt.Sprintf("https://github.com/login/oauth/authorize?client_id=%s&scope=read:user,user:email&redirect_uri=%s", clientID, redirectURI)
 	http.Redirect(w, r, redirectURL, http.StatusTemporaryRedirect)
 }
@@ -298,7 +298,7 @@ func (h *AuthHandler) GithubLogin(w http.ResponseWriter, r *http.Request) {
 func (h *AuthHandler) GithubLoginCallback(w http.ResponseWriter, r *http.Request) {
 	code := r.URL.Query().Get("code")
 	if code == "" {
-		http.Redirect(w, r, os.Getenv("NEXT_APP_BASE_URL")+"?error=missing_code", http.StatusTemporaryRedirect)
+		http.Redirect(w, r, "/?error=missing_code", http.StatusTemporaryRedirect)
 		return
 	}
 
@@ -314,7 +314,7 @@ func (h *AuthHandler) GithubLoginCallback(w http.ResponseWriter, r *http.Request
 
 	tokenResp, err := http.DefaultClient.Do(tokenReq)
 	if err != nil {
-		http.Redirect(w, r, os.Getenv("NEXT_APP_BASE_URL")+"?error=github_unreachable", http.StatusTemporaryRedirect)
+		http.Redirect(w, r, "/?error=github_unreachable", http.StatusTemporaryRedirect)
 		return
 	}
 	defer tokenResp.Body.Close()
@@ -325,7 +325,7 @@ func (h *AuthHandler) GithubLoginCallback(w http.ResponseWriter, r *http.Request
 	json.NewDecoder(tokenResp.Body).Decode(&tokenData)
 
 	if tokenData.AccessToken == "" {
-		http.Redirect(w, r, os.Getenv("NEXT_APP_BASE_URL")+"?error=no_token", http.StatusTemporaryRedirect)
+		http.Redirect(w, r, "/?error=no_token", http.StatusTemporaryRedirect)
 		return
 	}
 
@@ -333,7 +333,7 @@ func (h *AuthHandler) GithubLoginCallback(w http.ResponseWriter, r *http.Request
 	userReq.Header.Set("Authorization", "Bearer "+tokenData.AccessToken)
 	userResp, err := http.DefaultClient.Do(userReq)
 	if err != nil || userResp == nil {
-		http.Redirect(w, r, os.Getenv("NEXT_APP_BASE_URL")+"?error=failed_to_fetch_user", http.StatusTemporaryRedirect)
+		http.Redirect(w, r, "/?error=failed_to_fetch_user", http.StatusTemporaryRedirect)
 		return
 	}
 	defer userResp.Body.Close()
@@ -348,7 +348,7 @@ func (h *AuthHandler) GithubLoginCallback(w http.ResponseWriter, r *http.Request
 	emailReq.Header.Set("Authorization", "Bearer "+tokenData.AccessToken)
 	emailResp, err := http.DefaultClient.Do(emailReq)
 	if err != nil {
-		http.Redirect(w, r, os.Getenv("NEXT_APP_BASE_URL")+"?error=failed_to_fetch_emails", http.StatusTemporaryRedirect)
+		http.Redirect(w, r, "/?error=failed_to_fetch_emails", http.StatusTemporaryRedirect)
 		return
 	}
 	defer emailResp.Body.Close()
@@ -369,7 +369,7 @@ func (h *AuthHandler) GithubLoginCallback(w http.ResponseWriter, r *http.Request
 	}
 
 	if primaryEmail == "" {
-		http.Redirect(w, r, os.Getenv("NEXT_APP_BASE_URL")+"?error=no_verified_email", http.StatusTemporaryRedirect)
+		http.Redirect(w, r, "/?error=no_verified_email", http.StatusTemporaryRedirect)
 		return
 	}
 
@@ -392,7 +392,7 @@ func (h *AuthHandler) GithubLoginCallback(w http.ResponseWriter, r *http.Request
 
 		err := h.UserRepo.CreateUser(newUser)
 		if err != nil {
-			http.Redirect(w, r, os.Getenv("NEXT_APP_BASE_URL")+"?error=account_creation_failed", http.StatusTemporaryRedirect)
+			http.Redirect(w, r, "/?error=account_creation_failed", http.StatusTemporaryRedirect)
 			return
 		}
 
@@ -401,9 +401,9 @@ func (h *AuthHandler) GithubLoginCallback(w http.ResponseWriter, r *http.Request
 	}
 
 	if err := h.setAuthCookie(w, user); err != nil {
-		http.Redirect(w, r, os.Getenv("NEXT_APP_BASE_URL")+"?error=session_creation_failed", http.StatusTemporaryRedirect)
+		http.Redirect(w, r, "/?error=session_creation_failed", http.StatusTemporaryRedirect)
 		return
 	}
-	http.Redirect(w, r, os.Getenv("NEXT_APP_BASE_URL"), http.StatusTemporaryRedirect)
+	http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
 
 }

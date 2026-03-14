@@ -1,12 +1,14 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   async rewrites() {
-    return [
-      {
-        source: '/api/:path*',
-        destination: 'https://hackersquare-api.up.railway.app/:path*',
-      },
-    ]
+    return {
+      fallback: [
+        {
+          source: '/api/:path*',
+          destination: 'https://hackersquare-api.up.railway.app/:path*',
+        },
+      ],
+    }
   },
 }
 
