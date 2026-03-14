@@ -373,12 +373,14 @@ export default function ProfilePage() {
             AI Skill Summary
           </h2>
           <Card className="border-dashed">
-            <CardContent className="p-4">
-              <p className="text-sm text-muted-foreground leading-relaxed">
-                Strong fundamentals in React and Next.js. Recently demonstrating
-                growth in backend systems using Go and PostgreSQL. Actively
-                participating in open-source tooling.
-              </p>
+            <CardContent className="p-4 flex items-center gap-3">
+              <Robot className="size-4 shrink-0 text-muted-foreground/60" />
+              <div>
+                <p className="text-sm font-medium">Coming Soon</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  AI-generated skill summaries based on your activity will appear here.
+                </p>
+              </div>
             </CardContent>
           </Card>
         </section>
