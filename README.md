@@ -2,7 +2,7 @@
 
 ## Demo Video
 
-https://github.com/binit2-1/hackersquare/raw/main/.github/assets/hackersquaredemo.mp4
+[https://github.com/binit2-1/hackersquare/raw/main/.github/assets/hackersquaredemo.mp4](https://github.com/user-attachments/assets/ee5c9c22-de64-446e-970d-c61ca5e1ae74)
 
 
 **Discover, filter, and bookmark hackathons in one clean place.**
