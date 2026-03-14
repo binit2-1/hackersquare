@@ -55,7 +55,10 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.setAuthCookie(w, user)
+	if err := h.setAuthCookie(w, user); err != nil {
+		http.Error(w, "Failed to create session", http.StatusInternalServerError)
+		return
+	}
 
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(map[string]string{"message": "User registered successfully"})
@@ -81,19 +84,21 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.setAuthCookie(w, user)
+	if err := h.setAuthCookie(w, user); err != nil {
+		http.Error(w, "Failed to create session", http.StatusInternalServerError)
+		return
+	}
 
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(map[string]string{"message": "Login successful"})
 
 }
 
-func (h *AuthHandler) setAuthCookie(w http.ResponseWriter, user *domain.User) {
+func (h *AuthHandler) setAuthCookie(w http.ResponseWriter, user *domain.User) error {
 
 	tokenString, err := utils.GenerateJWT(user.ID, user.Email)
 	if err != nil {
-		http.Error(w, "Failed to generate auth token", http.StatusInternalServerError)
-		return
+		return err
 	}
 
 	cookie := &http.Cookie{
@@ -107,6 +112,7 @@ func (h *AuthHandler) setAuthCookie(w http.ResponseWriter, user *domain.User) {
 	}
 
 	http.SetCookie(w, cookie)
+	return nil
 }
 
 func (h *AuthHandler) GetUserByID(w http.ResponseWriter, r *http.Request) {
@@ -394,7 +400,10 @@ func (h *AuthHandler) GithubLoginCallback(w http.ResponseWriter, r *http.Request
 		user = newUser
 	}
 
-	h.setAuthCookie(w, user)
+	if err := h.setAuthCookie(w, user); err != nil {
+		http.Redirect(w, r, os.Getenv("NEXT_APP_BASE_URL")+"?error=session_creation_failed", http.StatusTemporaryRedirect)
+		return
+	}
 	http.Redirect(w, r, os.Getenv("NEXT_APP_BASE_URL"), http.StatusTemporaryRedirect)
 
 }
