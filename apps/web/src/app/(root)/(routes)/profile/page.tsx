@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Facehash } from "facehash";
 import { Badge } from "@/components/ui/badge";
 import { GithubCalendar } from "@/components/ui/github-calendar";
 import {
@@ -142,12 +143,7 @@ export default function ProfilePage() {
     window.location.href = `${process.env.NEXT_PUBLIC_API_URL}/v1/auth/github/connect`;
   };
 
-  const initials = user.name
-    .split(" ")
-    .map((w) => w[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase();
+
 
   const joinDate = new Date().toLocaleDateString("en-US", {
     day: "numeric",
@@ -161,11 +157,16 @@ export default function ProfilePage() {
 
         {/* ── Identity hero ── */}
         <div className="flex flex-col items-center text-center gap-4">
-          <Avatar className="size-24 sm:size-28 text-2xl sm:text-3xl font-bold border-2 border-border shadow-sm">
-            <AvatarFallback className="bg-muted text-foreground">
-              {initials}
-            </AvatarFallback>
-          </Avatar>
+          <Facehash
+            name={user.name}
+            size={96}
+            intensity3d="subtle"
+            showInitial={true}
+            variant="solid"
+            enableBlink
+            className="rounded-full text-black"
+            colors={["#FFFFFF", "#FFFFFF", "#FFFFFF"]}
+          />
 
           <div className="space-y-1.5">
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
