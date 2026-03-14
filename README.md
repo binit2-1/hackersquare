@@ -1,4 +1,11 @@
-![HackerSquare Banner](apps/web/public/banner.svg) 
+![HackerSquare Banner](apps/web/public/banner.svg)
+
+## Demo Video
+
+<video src="apps/web/public/hackersquaredemo.mp4" controls width="100%"></video>
+
+If the embedded player does not render in your viewer, open the file directly: [HackerSquare Demo](apps/web/public/hackersquaredemo.mp4).
+
 
 **Discover, filter, and bookmark hackathons in one clean place.**
 
@@ -32,6 +39,7 @@ HackerSquare is a web app that helps students, developers, and builders find hac
 2. Use filters to narrow the list.
 3. Bookmark events you like.
 4. Open the event and apply.
+
 
 
 --- 
