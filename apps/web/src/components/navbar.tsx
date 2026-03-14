@@ -21,6 +21,7 @@ import {
   CommandShortcut,
 } from "@/components/ui/command";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname, useSearchParams, useRouter } from "next/navigation";
 import {
   Trophy,
@@ -212,7 +213,14 @@ export function Navbar() {
       <div className="relative flex h-14 items-center">
         <div className="shrink-0 px-4 sm:px-6 lg:px-8">
           <Link href="/" className="block">
-            <div className="h-8 w-8 rounded-full bg-primary" />
+            <Image
+              src="/logoHS.svg"
+              alt="HackerSquare logo"
+              width={28}
+              height={28}
+              className="h-8 w-8 rounded-full"
+              priority
+            />
           </Link>
         </div>
 
