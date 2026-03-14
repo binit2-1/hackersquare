@@ -13,10 +13,11 @@ import { SearchResponse } from "@/models/hackathon";
 const fetchHackathons = async (
   queryString: string,
 ): Promise<SearchResponse> => {
-  const appBaseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  const apiBaseUrl =
+    process.env.NEXT_PUBLIC_API_URL || "https://hackersquare-api.up.railway.app";
   const url = queryString
-    ? `${appBaseUrl}/api/v1/search?${queryString}`
-    : `${appBaseUrl}/api/v1/search`;
+    ? `${apiBaseUrl}/v1/search?${queryString}`
+    : `${apiBaseUrl}/v1/search`;
   const response = await fetch(url, {
     cache: "no-store",
   });

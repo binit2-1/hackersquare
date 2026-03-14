@@ -16,7 +16,7 @@ const page = () => {
     router.push(`/search?${params.toString()}`);
   };
   return (
-    <div className="w-screen h-screen flex justify-center items-center bg-background text-foreground">
+    <div className="w-screen h-screen flex justify-center items-center bg-background text-foreground ">
       <SearchBar
         placeholders={[
           "Search for hackathons...",
