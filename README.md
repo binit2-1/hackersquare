@@ -2,7 +2,7 @@
 
 ## Demo Video
 
-<video src="apps/web/public/hackersquaredemo.mp4" controls width="100%"></video>
+https://github.com/binit2-1/hackersquare/raw/main/.github/assets/hackersquaredemo.mp4
 
 
 **Discover, filter, and bookmark hackathons in one clean place.**
