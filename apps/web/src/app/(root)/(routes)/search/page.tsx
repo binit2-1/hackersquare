@@ -1,4 +1,6 @@
 import { HackathonCard } from "@/components/hackathon-card";
+import { NearMeEmptyState } from "@/components/near-me-empty-state";
+import { headers } from "next/headers";
 import {
   Pagination,
   PaginationContent,
@@ -11,21 +13,44 @@ import {
 import { SearchResponse } from "@/models/hackathon";
 
 const fetchHackathons = async (
+  origin: string,
+  endpoint: string,
   queryString: string,
 ): Promise<SearchResponse> => {
-  const apiBaseUrl =
-    process.env.NEXT_PUBLIC_API_URL || "https://hackersquare-api.up.railway.app";
   const url = queryString
-    ? `${apiBaseUrl}/v1/search?${queryString}`
-    : `${apiBaseUrl}/v1/search`;
+    ? `${origin}${endpoint}?${queryString}`
+    : `${origin}${endpoint}`;
   const response = await fetch(url, {
     cache: "no-store",
   });
   if (!response.ok) {
-    throw new Error("Failed to fetch hackathons");
+    throw new Error(`Failed to fetch hackathons (${response.status})`);
   }
   const data = await response.json();
   return data;
+};
+
+const buildEmptyResponse = (page: number, limit: number): SearchResponse => ({
+  data: [],
+  metadata: {
+    totalRecords: 0,
+    currentPage: page,
+    limit,
+    totalPages: 0,
+  },
+});
+
+const normalizeGeoHeader = (value: string | null): string => {
+  if (!value) return "";
+  let decoded = value;
+  try {
+    decoded = decodeURIComponent(value);
+  } catch {
+    decoded = value;
+  }
+  decoded = decoded.trim();
+  if (!decoded || decoded.toLowerCase() === "unknown") return "";
+  return decoded;
 };
 
 const SearchPage = async ({
@@ -33,15 +58,72 @@ const SearchPage = async ({
 }: {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) => {
+  const requestHeaders = await headers();
+  const forwardedHost = requestHeaders.get("x-forwarded-host");
+  const host = forwardedHost || requestHeaders.get("host") || "localhost:3000";
+  const proto =
+    requestHeaders.get("x-forwarded-proto") ||
+    (host.includes("localhost") ? "http" : "https");
+  const origin = `${proto}://${host}`;
+
+  const city =
+    normalizeGeoHeader(requestHeaders.get("x-vercel-ip-city")) ||
+    (host.includes("localhost")
+      ? (process.env.NEARBY_FALLBACK_CITY || "")
+      : "");
+  const country =
+    normalizeGeoHeader(requestHeaders.get("x-vercel-ip-country")) ||
+    (host.includes("localhost")
+      ? (process.env.NEARBY_FALLBACK_COUNTRY || "")
+      : "");
+
   const resolvedSearchParams = await searchParams;
   const params = new URLSearchParams();
   for (const [key, value] of Object.entries(resolvedSearchParams)) {
     if (value) params.append(key, String(value));
   }
 
-  const { data: hackathons, metadata } = await fetchHackathons(
-    params.toString(),
-  );
+  const queryText = (resolvedSearchParams.q || "").toString().trim();
+  const nearMeRequested = /\bnear me\b/i.test(queryText);
+  const nearMeGeoUnavailable = nearMeRequested && !city && !country;
+  const page = Number(params.get("page") || "1") || 1;
+  const limit = Number(params.get("limit") || "20") || 20;
+
+  let endpoint = "/api/v1/search";
+  let responsePayload: SearchResponse;
+
+  if (nearMeRequested) {
+    endpoint = "/api/v1/hackathons/nearby";
+    params.delete("q");
+    if (city) params.set("city", city);
+    if (country) params.set("country", country);
+
+    if (!city && !country) {
+      responsePayload = buildEmptyResponse(page, limit);
+    } else {
+      try {
+        responsePayload = await fetchHackathons(origin, endpoint, params.toString());
+      } catch {
+        const fallbackParams = new URLSearchParams(params);
+        fallbackParams.delete("city");
+        fallbackParams.delete("country");
+
+        // Nearby endpoint fallback should stay geo-scoped, never global.
+        fallbackParams.set("q", [city, country].filter(Boolean).join(" "));
+
+        endpoint = "/api/v1/search";
+        responsePayload = await fetchHackathons(
+          origin,
+          endpoint,
+          fallbackParams.toString(),
+        );
+      }
+    }
+  } else {
+    responsePayload = await fetchHackathons(origin, endpoint, params.toString());
+  }
+
+  const { data: hackathons, metadata } = responsePayload;
 
   const currentPage = metadata.currentPage;
   const totalPages = metadata.totalPages;
@@ -93,15 +175,21 @@ const SearchPage = async ({
   return (
     <div className=" min-h-screen max-w-196.5">
       <div className="mx-auto px-4 py-8 max-w-7xl">
-        <p className="mb-4 text-sm text-gray-500">
-          Showing {hackathons.length} of {metadata.totalRecords} hackathons
-        </p>
+        {nearMeGeoUnavailable ? (
+          <NearMeEmptyState />
+        ) : (
+          <>
+            <p className="mb-4 text-sm text-gray-500">
+              Showing {hackathons.length} of {metadata.totalRecords} hackathons
+            </p>
 
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          {hackathons.map((hackathon) => (
-            <HackathonCard key={hackathon.id} hackathon={hackathon} />
-          ))}
-        </div>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              {hackathons.map((hackathon) => (
+                <HackathonCard key={hackathon.id} hackathon={hackathon} />
+              ))}
+            </div>
+          </>
+        )}
       </div>
 
       {totalPages > 1 && (

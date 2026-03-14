@@ -56,6 +56,7 @@ func main() {
 	mux.HandleFunc("POST /v1/auth/register", authHandler.Register)
 	mux.HandleFunc("POST /v1/auth/logout", server.AuthMiddleware(authHandler.Logout))
 	mux.HandleFunc("GET /v1/search", hackathonHandler.SearchHackathons)
+	mux.HandleFunc("GET /v1/hackathons/nearby", hackathonHandler.NearbyHackathons)
 
 	//protected routes
 	mux.HandleFunc("POST /v1/bookmarks", server.AuthMiddleware(bookmarkHandler.AddBookmark))

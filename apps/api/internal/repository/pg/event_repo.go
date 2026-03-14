@@ -134,6 +134,76 @@ func (h *PostgresEventRepo) SearchHackathons(filters domain.SearchFilters) ([]do
 	return hackathons, totalCount, nil
 }
 
+func (h *PostgresEventRepo) NearbyHackathons(city, country string, page, limit int) ([]domain.Hackathon, int, error) {
+	query := `SELECT id, title, COALESCE(host, 'Unknown Host'), COALESCE(location, 'TBA'), COALESCE(prize_usd, 0.0), start_date, end_date, COALESCE(apply_url, ''), COUNT(*) OVER() FROM hackathons WHERE end_date >= CURRENT_DATE`
+
+	var geoConditions []string
+	var args []any
+	argID := 1
+
+	if city != "" {
+		geoConditions = append(geoConditions, fmt.Sprintf("location ILIKE $%d", argID))
+		args = append(args, "%"+city+"%")
+		argID++
+	}
+
+	if country != "" {
+		geoConditions = append(geoConditions, fmt.Sprintf("location ILIKE $%d", argID))
+		args = append(args, "%"+country+"%")
+		argID++
+	}
+
+	if len(geoConditions) > 0 {
+		query += " AND (" + strings.Join(geoConditions, " OR ") + ")"
+	}
+
+	if limit <= 0 {
+		limit = 20
+	}
+	if page <= 0 {
+		page = 1
+	}
+
+	offset := (page - 1) * limit
+	query += fmt.Sprintf(" ORDER BY start_date DESC LIMIT $%d OFFSET $%d", argID, argID+1)
+	args = append(args, limit, offset)
+
+	rows, err := h.db.Query(query, args...)
+	if err != nil {
+		return nil, 0, fmt.Errorf("nearby query failed: %w", err)
+	}
+	defer rows.Close()
+
+	var hackathons []domain.Hackathon
+	totalCount := 0
+
+	for rows.Next() {
+		var event domain.Hackathon
+		err := rows.Scan(
+			&event.ID,
+			&event.Title,
+			&event.Host,
+			&event.Location,
+			&event.PrizeUSD,
+			&event.StartDate,
+			&event.EndDate,
+			&event.ApplyURL,
+			&totalCount,
+		)
+		if err != nil {
+			return nil, 0, fmt.Errorf("failed to scan nearby row: %w", err)
+		}
+
+		hackathons = append(hackathons, event)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, 0, fmt.Errorf("nearby row iteration error: %w", err)
+	}
+
+	return hackathons, totalCount, nil
+}
+
 func (h *PostgresEventRepo) DeleteExpiredHackathons() (int64, error) {
 	query := `DELETE FROM hackathons WHERE end_date < CURRENT_DATE`
 
