@@ -53,6 +53,25 @@ const normalizeGeoHeader = (value: string | null): string => {
   return decoded;
 };
 
+const normalizeCountryHeader = (value: string | null): string => {
+  const normalized = normalizeGeoHeader(value);
+  if (!normalized) return "";
+
+  // Vercel often sends ISO country codes (e.g. IN, US). Expand to full names for SQL matching.
+  if (/^[A-Za-z]{2}$/.test(normalized)) {
+    try {
+      const regionName = new Intl.DisplayNames(["en"], { type: "region" }).of(
+        normalized.toUpperCase(),
+      );
+      return regionName || "";
+    } catch {
+      return "";
+    }
+  }
+
+  return normalized;
+};
+
 const SearchPage = async ({
   searchParams,
 }: {
@@ -72,7 +91,7 @@ const SearchPage = async ({
       ? (process.env.NEARBY_FALLBACK_CITY || "")
       : "");
   const country =
-    normalizeGeoHeader(requestHeaders.get("x-vercel-ip-country")) ||
+    normalizeCountryHeader(requestHeaders.get("x-vercel-ip-country")) ||
     (host.includes("localhost")
       ? (process.env.NEARBY_FALLBACK_COUNTRY || "")
       : "");

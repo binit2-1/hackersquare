@@ -96,6 +96,11 @@ func (h *HackathonHandler) NearbyHackathons(w http.ResponseWriter, r *http.Reque
 		country = ""
 	}
 
+	// Raw ISO-2 country codes (e.g. IN, US) produce noisy ILIKE matches.
+	if len([]rune(country)) == 2 {
+		country = ""
+	}
+
 	page := 1
 	limit := 20
 
