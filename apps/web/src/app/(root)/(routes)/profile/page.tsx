@@ -12,6 +12,8 @@ import { Facehash } from "facehash";
 import { Badge } from "@/components/ui/badge";
 import { GithubCalendar } from "@/components/ui/github-calendar";
 import AIThinking from "@/registry/new-york/blocks/ai/ai-thinking";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import {
   User,
   PencilSimple,
@@ -50,6 +52,9 @@ export default function ProfilePage() {
   const [generatingReadme, setGeneratingReadme] = useState(false);
   const [savingReadme, setSavingReadme] = useState(false);
   const [readmeError, setReadmeError] = useState("");
+  const [savedReadme, setSavedReadme] = useState("");
+  const [showFullReadme, setShowFullReadme] = useState(false);
+  const [isEditingReadme, setIsEditingReadme] = useState(false);
   const readmeRef = useRef<HTMLTextAreaElement | null>(null);
 
   useEffect(() => {
@@ -61,6 +66,8 @@ export default function ProfilePage() {
     setLinkedin(user.linkedin_url || "");
     setTwitter(user.twitter_url || "");
     setProfileReadme(user.profileReadme || "");
+    setSavedReadme(user.profileReadme || "");
+    setIsEditingReadme(!(user.profileReadme || "").trim());
 
     try {
       const storedSkills = localStorage.getItem(`${TECH_STACK_STORAGE_PREFIX}${user.id}`);
@@ -196,6 +203,9 @@ export default function ProfilePage() {
 
       if (typeof payload?.summary === "string" && payload.summary.trim()) {
         setProfileReadme(payload.summary);
+        setSavedReadme(payload.summary);
+        setShowFullReadme(false);
+        setIsEditingReadme(false);
       }
       await refreshUser();
     } catch (error) {
@@ -222,6 +232,9 @@ export default function ProfilePage() {
         throw new Error(payload?.message || "Failed to save README");
       }
 
+      setSavedReadme(profileReadme);
+      setShowFullReadme(false);
+      setIsEditingReadme(false);
       await refreshUser();
     } catch (error) {
       const message = error instanceof Error ? error.message : "Failed to save README";
@@ -238,6 +251,8 @@ export default function ProfilePage() {
     month: "short",
     year: "numeric",
   });
+  const hasSavedReadme = savedReadme.trim().length > 0;
+  const shouldCollapseReadme = savedReadme.length > 480;
 
   return (
     <div className="min-h-screen bg-background">
@@ -469,49 +484,93 @@ export default function ProfilePage() {
                     Write a short Reddit-style bio with markdown tools, or generate one from your GitHub profile.
                   </p>
                 </div>
-                <Button
-                  type="button"
-                  size="sm"
-                  onClick={handleGenerateReadme}
-                  disabled={generatingReadme || !user.github_handle}
-                  title={user.github_handle ? "Generate README" : "Connect GitHub to generate README"}
+                {isEditingReadme ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={handleGenerateReadme}
+                    disabled={generatingReadme || !user.github_handle}
+                    title={user.github_handle ? "Generate README" : "Connect GitHub to generate README"}
+                  >
+                    <Robot className="size-4 mr-1.5" />
+                    Generate README
+                  </Button>
+                ) : (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      setProfileReadme(savedReadme);
+                      setReadmeError("");
+                      setIsEditingReadme(true);
+                    }}
+                  >
+                    <PencilSimple className="size-4 mr-1.5" />
+                    Edit README
+                  </Button>
+                )}
+              </div>
+
+              {isEditingReadme ? (
+                <>
+                  <div className="flex flex-wrap items-center gap-1 rounded-md border p-1">
+                    <Button type="button" variant="ghost" size="sm" onClick={() => wrapSelectionWith("**", "**") }>
+                      <TextB className="size-4" />
+                    </Button>
+                    <Button type="button" variant="ghost" size="sm" onClick={() => wrapSelectionWith("*", "*") }>
+                      <TextItalic className="size-4" />
+                    </Button>
+                    <Button type="button" variant="ghost" size="sm" onClick={() => wrapSelectionWith("[", "](https://)", "link") }>
+                      <LinkSimple className="size-4" />
+                    </Button>
+                    <Button type="button" variant="ghost" size="sm" onClick={() => wrapSelectionWith("\n> ", "", "quote") }>
+                      <Quotes className="size-4" />
+                    </Button>
+                    <Button type="button" variant="ghost" size="sm" onClick={() => wrapSelectionWith("`", "`") }>
+                      <Code className="size-4" />
+                    </Button>
+                    <Button type="button" variant="ghost" size="sm" onClick={() => wrapSelectionWith("\n- ", "", "item") }>
+                      <ListBullets className="size-4" />
+                    </Button>
+                  </div>
+
+                  {generatingReadme ? (
+                    <AIThinking spinner={true} message="Generating README..." />
+                  ) : (
+                    <Textarea
+                      ref={readmeRef}
+                      value={profileReadme}
+                      onChange={(e) => setProfileReadme(e.target.value)}
+                      placeholder="Tell us about yourself..."
+                      className="min-h-44 resize-y border-muted-foreground/20"
+                    />
+                  )}
+                </>
+              ) : hasSavedReadme ? (
+                <div
+                  className={`rounded-md border border-muted-foreground/20 bg-muted/20 p-4 text-sm ${
+                    shouldCollapseReadme && !showFullReadme ? "max-h-48 overflow-hidden" : ""
+                  }`}
                 >
-                  <Robot className="size-4 mr-1.5" />
-                  Generate README
-                </Button>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-1 rounded-md border p-1">
-                <Button type="button" variant="ghost" size="sm" onClick={() => wrapSelectionWith("**", "**") }>
-                  <TextB className="size-4" />
-                </Button>
-                <Button type="button" variant="ghost" size="sm" onClick={() => wrapSelectionWith("*", "*") }>
-                  <TextItalic className="size-4" />
-                </Button>
-                <Button type="button" variant="ghost" size="sm" onClick={() => wrapSelectionWith("[", "](https://)", "link") }>
-                  <LinkSimple className="size-4" />
-                </Button>
-                <Button type="button" variant="ghost" size="sm" onClick={() => wrapSelectionWith("\n> ", "", "quote") }>
-                  <Quotes className="size-4" />
-                </Button>
-                <Button type="button" variant="ghost" size="sm" onClick={() => wrapSelectionWith("`", "`") }>
-                  <Code className="size-4" />
-                </Button>
-                <Button type="button" variant="ghost" size="sm" onClick={() => wrapSelectionWith("\n- ", "", "item") }>
-                  <ListBullets className="size-4" />
-                </Button>
-              </div>
-
-              {generatingReadme ? (
-                <AIThinking spinner={true} message="Generating README..." />
+                  <ReactMarkdown
+                    remarkPlugins={[remarkGfm]}
+                    components={{
+                      a: ({ ...props }) => (
+                        <a
+                          {...props}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-primary underline"
+                        />
+                      ),
+                    }}
+                  >
+                    {savedReadme}
+                  </ReactMarkdown>
+                </div>
               ) : (
-                <Textarea
-                  ref={readmeRef}
-                  value={profileReadme}
-                  onChange={(e) => setProfileReadme(e.target.value)}
-                  placeholder="Tell us about yourself..."
-                  className="min-h-44 resize-y border-muted-foreground/20"
-                />
+                <p className="text-xs text-muted-foreground">No README yet. Click Edit README to add your bio.</p>
               )}
 
               {readmeError && (
@@ -524,21 +583,51 @@ export default function ProfilePage() {
                 </p>
               )}
 
-              <div className="flex items-center justify-between text-xs text-muted-foreground">
-                <span>Markdown supported</span>
-                <span>{profileReadme.length} chars</span>
-              </div>
+              {isEditingReadme && (
+                <>
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <span>Markdown supported</span>
+                    <span>{profileReadme.length} chars</span>
+                  </div>
 
-              <div className="flex justify-end">
-                <Button
-                  type="button"
-                  size="sm"
-                  onClick={handleSaveReadme}
-                  disabled={generatingReadme || savingReadme}
-                >
-                  {savingReadme ? <SpinnerGap className="size-4 animate-spin" /> : "Save README"}
-                </Button>
-              </div>
+                  <div className="flex justify-end gap-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => {
+                        setProfileReadme(savedReadme);
+                        setReadmeError("");
+                        setIsEditingReadme(false);
+                      }}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={handleSaveReadme}
+                      disabled={generatingReadme || savingReadme}
+                    >
+                      {savingReadme ? <SpinnerGap className="size-4 animate-spin" /> : "Save README"}
+                    </Button>
+                  </div>
+                </>
+              )}
+
+              {!isEditingReadme && shouldCollapseReadme && hasSavedReadme && (
+                <div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 px-2 text-xs"
+                    onClick={() => setShowFullReadme((prev) => !prev)}
+                  >
+                    {showFullReadme ? "Show less" : "Show more"}
+                  </Button>
+                </div>
+              )}
             </CardContent>
           </Card>
         </section>

@@ -36,32 +36,34 @@ func GenerateAIOverview(githubData string) (string, error) {
 	}
 	client := api.NewClient(cloudURL, httpClient)
 
-	systemPrompt := `You are a Senior Technical Profiler.
-Your task is to analyze a developer's raw GitHub repository data and produce a structured, high-signal README summary optimized for a professional portfolio.
+	systemPrompt := `You are an expert Developer Advocate and Technical Profiler.
+Your task is to analyze a developer's raw GitHub repository data and produce a structured, high-signal Markdown profile README optimized for their portfolio.
 
 Critical objective:
-- Capture true development behavior based on repository names, languages, and descriptions.
+- Capture true development behavior based on repository names, descriptions, and languages.
 - Never hallucinate skills, languages, or projects that do not exist in the data.
 
-Required output format (Markdown):
-## 🧑‍💻 Developer Overview
-[A strict 2-3 sentence executive summary of their profile based purely on the data]
+Required Output Format (Strictly follow this Markdown structure):
 
-### 🛠️ Runtime & Tech Stack
-- [List primary languages explicitly found in the data]
-- [List primary frameworks or tools discovered]
+## Hi, I'm a [Infer Role, e.g., Fullstack Developer, Systems Engineer, Frontend Engineer].
 
-### 🏗️ Project Archetypes
-- [Identify the types of tools they build: e.g., Low-level Systems, Web Scrapers, CLI Tools, UI Components]
+[Write a concise, 2-3 sentence bio summarizing what they build, their primary ecosystem, and their developer focus based on the data.]
 
-### ⚙️ Developer Philosophy
-- [Infer their focus based on project scopes: e.g., Open-source contributor, heavy automation focus, UI/UX centric]
+### 🛠 Tech Stack
 
-Strict rules:
-- Every bullet point must be backed by evidence in the provided data.
-- If evidence is weak for a category, omit the category.
-- Do not use generic filler words ("passionate", "ninja"). Be objective and precise.
-- Output raw Markdown only. Do not wrap the response in a code block.`
+* **Core:** [List primary languages and major frameworks found in the data]
+* **Tools:** [List inferred tools, e.g., Git, Docker, etc., based on project types]
+
+### 🚀 Featured Projects
+
+[Select the top 2 or 3 most impressive original repositories based on stars, topics, and descriptions. For each, use this exact format:]
+
+**[Project Name]**
+
+* [1-2 bullet points explaining what it is and its features based on the description]
+* **Tech:** [List the languages and topics used in this specific project]\
+
+---`
 
 
 	stream := false
