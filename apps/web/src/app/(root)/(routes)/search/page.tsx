@@ -1,6 +1,7 @@
 import { HackathonCard } from "@/components/hackathon-card";
 import { NearMeEmptyState } from "@/components/near-me-empty-state";
 import { headers } from "next/headers";
+import iso3166 from "iso-3166-2";
 import {
   Pagination,
   PaginationContent,
@@ -53,25 +54,6 @@ const normalizeGeoHeader = (value: string | null): string => {
   return decoded;
 };
 
-const normalizeCountryHeader = (value: string | null): string => {
-  const normalized = normalizeGeoHeader(value);
-  if (!normalized) return "";
-
-  // Vercel often sends ISO country codes (e.g. IN, US). Expand to full names for SQL matching.
-  if (/^[A-Za-z]{2}$/.test(normalized)) {
-    try {
-      const regionName = new Intl.DisplayNames(["en"], { type: "region" }).of(
-        normalized.toUpperCase(),
-      );
-      return regionName || "";
-    } catch {
-      return "";
-    }
-  }
-
-  return normalized;
-};
-
 const SearchPage = async ({
   searchParams,
 }: {
@@ -84,17 +66,23 @@ const SearchPage = async ({
     requestHeaders.get("x-forwarded-proto") ||
     (host.includes("localhost") ? "http" : "https");
   const origin = `${proto}://${host}`;
+  const countryCode = normalizeGeoHeader(
+    requestHeaders.get("x-vercel-ip-country"),
+  ).toUpperCase();
+  const regionCode = normalizeGeoHeader(
+    requestHeaders.get("x-vercel-ip-country-region"),
+  ).toUpperCase();
 
   const city =
     normalizeGeoHeader(requestHeaders.get("x-vercel-ip-city")) ||
     (host.includes("localhost")
       ? (process.env.NEARBY_FALLBACK_CITY || "")
       : "");
-  const country =
-    normalizeCountryHeader(requestHeaders.get("x-vercel-ip-country")) ||
-    (host.includes("localhost")
-      ? (process.env.NEARBY_FALLBACK_COUNTRY || "")
-      : "");
+  const stateName =
+    (countryCode && regionCode
+      ? (iso3166.subdivision(countryCode, regionCode)?.name ?? "")
+      : "") ||
+    (host.includes("localhost") ? (process.env.NEARBY_FALLBACK_STATE || "") : "");
 
   const resolvedSearchParams = await searchParams;
   const params = new URLSearchParams();
@@ -104,7 +92,7 @@ const SearchPage = async ({
 
   const queryText = (resolvedSearchParams.q || "").toString().trim();
   const nearMeRequested = /\bnear me\b/i.test(queryText);
-  const nearMeGeoUnavailable = nearMeRequested && !city && !country;
+  const nearMeGeoUnavailable = nearMeRequested && !city && !stateName;
   const page = Number(params.get("page") || "1") || 1;
   const limit = Number(params.get("limit") || "20") || 20;
 
@@ -115,9 +103,10 @@ const SearchPage = async ({
     endpoint = "/api/v1/hackathons/nearby";
     params.delete("q");
     if (city) params.set("city", city);
-    if (country) params.set("country", country);
+    // Intentionally pass state/province as country for legacy backend SQL compatibility.
+    if (stateName) params.set("country", stateName);
 
-    if (!city && !country) {
+    if (!city && !stateName) {
       responsePayload = buildEmptyResponse(page, limit);
     } else {
       try {
@@ -128,7 +117,7 @@ const SearchPage = async ({
         fallbackParams.delete("country");
 
         // Nearby endpoint fallback should stay geo-scoped, never global.
-        fallbackParams.set("q", [city, country].filter(Boolean).join(" "));
+        fallbackParams.set("q", [city, stateName].filter(Boolean).join(" "));
 
         endpoint = "/api/v1/search";
         responsePayload = await fetchHackathons(
