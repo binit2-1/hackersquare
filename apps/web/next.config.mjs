@@ -1,15 +1,16 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   async rewrites() {
-    return {
-      fallback: [
-        {
-          source: '/api/:path*',
-          destination: 'https://hackersquare-api.up.railway.app/:path*',
-        },
-      ],
-    }
+    
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://hackersquare-api.up.railway.app';
+    
+    return [
+      {
+        source: '/api/:path*',
+        destination: `${apiUrl}/:path*`, 
+      },
+    ];
   },
-}
+};
 
 export default nextConfig;

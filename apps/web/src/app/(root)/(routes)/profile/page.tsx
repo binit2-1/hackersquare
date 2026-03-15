@@ -1,15 +1,17 @@
 "use client";
 
-import { KeyboardEvent, useEffect, useState } from "react";
+import { KeyboardEvent, useEffect, useRef, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Facehash } from "facehash";
 import { Badge } from "@/components/ui/badge";
 import { GithubCalendar } from "@/components/ui/github-calendar";
+import AIThinking from "@/registry/new-york/blocks/ai/ai-thinking";
 import {
   User,
   PencilSimple,
@@ -22,6 +24,12 @@ import {
   Robot,
   X,
   SpinnerGap,
+  TextB,
+  TextItalic,
+  LinkSimple,
+  Quotes,
+  Code,
+  ListBullets,
 } from "@phosphor-icons/react/dist/ssr";
 
 const TECH_STACK_STORAGE_PREFIX = "profile-tech-stack:";
@@ -38,6 +46,11 @@ export default function ProfilePage() {
   const [twitter, setTwitter] = useState("");
   const [techStack, setTechStack] = useState<string[]>([]);
   const [newSkill, setNewSkill] = useState("");
+  const [profileReadme, setProfileReadme] = useState("");
+  const [generatingReadme, setGeneratingReadme] = useState(false);
+  const [savingReadme, setSavingReadme] = useState(false);
+  const [readmeError, setReadmeError] = useState("");
+  const readmeRef = useRef<HTMLTextAreaElement | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -47,6 +60,7 @@ export default function ProfilePage() {
     setWebsite(user.website_url || "");
     setLinkedin(user.linkedin_url || "");
     setTwitter(user.twitter_url || "");
+    setProfileReadme(user.profileReadme || "");
 
     try {
       const storedSkills = localStorage.getItem(`${TECH_STACK_STORAGE_PREFIX}${user.id}`);
@@ -141,6 +155,80 @@ export default function ProfilePage() {
 
   const handleConnectGitHub = () => {
     window.location.href = "/api/v1/auth/github/connect";
+  };
+
+  const wrapSelectionWith = (
+    prefix: string,
+    suffix = "",
+    placeholder = "text",
+  ) => {
+    const element = readmeRef.current;
+    if (!element) return;
+
+    const start = element.selectionStart || 0;
+    const end = element.selectionEnd || 0;
+    const selected = profileReadme.slice(start, end);
+    const replacement = `${prefix}${selected || placeholder}${suffix}`;
+    const updated = `${profileReadme.slice(0, start)}${replacement}${profileReadme.slice(end)}`;
+
+    setProfileReadme(updated);
+
+    requestAnimationFrame(() => {
+      element.focus();
+      const caret = start + replacement.length;
+      element.setSelectionRange(caret, caret);
+    });
+  };
+
+  const handleGenerateReadme = async () => {
+    setReadmeError("");
+    setGeneratingReadme(true);
+    try {
+      const response = await fetch("/api/v1/users/profile/generate-summary", {
+        method: "POST",
+        credentials: "include",
+      });
+
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(payload?.message || "Failed to generate README");
+      }
+
+      if (typeof payload?.summary === "string" && payload.summary.trim()) {
+        setProfileReadme(payload.summary);
+      }
+      await refreshUser();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to generate README";
+      setReadmeError(message);
+    } finally {
+      setGeneratingReadme(false);
+    }
+  };
+
+  const handleSaveReadme = async () => {
+    setReadmeError("");
+    setSavingReadme(true);
+    try {
+      const response = await fetch("/api/v1/users/profile/readme", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ readme: profileReadme }),
+      });
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.message || "Failed to save README");
+      }
+
+      await refreshUser();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to save README";
+      setReadmeError(message);
+    } finally {
+      setSavingReadme(false);
+    }
   };
 
 
@@ -372,14 +460,84 @@ export default function ProfilePage() {
             <Robot className="size-3.5" />
             AI Skill Summary
           </h2>
-          <Card className="border-dashed">
-            <CardContent className="p-4 flex items-center gap-3">
-              <Robot className="size-4 shrink-0 text-muted-foreground/60" />
-              <div>
-                <p className="text-sm font-medium">Coming Soon</p>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  AI-generated skill summaries based on your activity will appear here.
+          <Card>
+            <CardContent className="p-4 space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <p className="text-sm font-medium">Developer README</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Write a short Reddit-style bio with markdown tools, or generate one from your GitHub profile.
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={handleGenerateReadme}
+                  disabled={generatingReadme || !user.github_handle}
+                  title={user.github_handle ? "Generate README" : "Connect GitHub to generate README"}
+                >
+                  <Robot className="size-4 mr-1.5" />
+                  Generate README
+                </Button>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-1 rounded-md border p-1">
+                <Button type="button" variant="ghost" size="sm" onClick={() => wrapSelectionWith("**", "**") }>
+                  <TextB className="size-4" />
+                </Button>
+                <Button type="button" variant="ghost" size="sm" onClick={() => wrapSelectionWith("*", "*") }>
+                  <TextItalic className="size-4" />
+                </Button>
+                <Button type="button" variant="ghost" size="sm" onClick={() => wrapSelectionWith("[", "](https://)", "link") }>
+                  <LinkSimple className="size-4" />
+                </Button>
+                <Button type="button" variant="ghost" size="sm" onClick={() => wrapSelectionWith("\n> ", "", "quote") }>
+                  <Quotes className="size-4" />
+                </Button>
+                <Button type="button" variant="ghost" size="sm" onClick={() => wrapSelectionWith("`", "`") }>
+                  <Code className="size-4" />
+                </Button>
+                <Button type="button" variant="ghost" size="sm" onClick={() => wrapSelectionWith("\n- ", "", "item") }>
+                  <ListBullets className="size-4" />
+                </Button>
+              </div>
+
+              {generatingReadme ? (
+                <AIThinking spinner={true} message="Generating README..." />
+              ) : (
+                <Textarea
+                  ref={readmeRef}
+                  value={profileReadme}
+                  onChange={(e) => setProfileReadme(e.target.value)}
+                  placeholder="Tell us about yourself..."
+                  className="min-h-44 resize-y border-muted-foreground/20"
+                />
+              )}
+
+              {readmeError && (
+                <p className="text-xs text-red-500">{readmeError}</p>
+              )}
+
+              {!user.github_handle && (
+                <p className="text-xs text-muted-foreground">
+                  Connect GitHub to unlock AI README generation.
                 </p>
+              )}
+
+              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                <span>Markdown supported</span>
+                <span>{profileReadme.length} chars</span>
+              </div>
+
+              <div className="flex justify-end">
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={handleSaveReadme}
+                  disabled={generatingReadme || savingReadme}
+                >
+                  {savingReadme ? <SpinnerGap className="size-4 animate-spin" /> : "Save README"}
+                </Button>
               </div>
             </CardContent>
           </Card>

@@ -8,6 +8,7 @@ export type User = {
     website_url: string;
     linkedin_url: string;
     twitter_url: string;
+    profileReadme?: string;
 };
 
 export type AuthContextType = {

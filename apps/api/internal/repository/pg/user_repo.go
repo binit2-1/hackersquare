@@ -73,7 +73,7 @@ func (h *PostgresUserRepo) GetUserByEmail(email string) (*domain.User, error) {
 func (h *PostgresUserRepo) GetUserByID(id string) (*domain.User, error) {
 	var user domain.User
 
-	query := `SELECT id, name, email, COALESCE(headline, ''), COALESCE(location, ''), COALESCE(github_handle, ''), COALESCE(website_url, ''), COALESCE(linkedin_url, ''), COALESCE(twitter_url, '') FROM users WHERE id = $1`
+	query := `SELECT id, name, email, COALESCE(headline, ''), COALESCE(location, ''), COALESCE(github_handle, ''), COALESCE(website_url, ''), COALESCE(linkedin_url, ''), COALESCE(twitter_url, ''), COALESCE(profile_readme, '') FROM users WHERE id = $1`
 
 	err := h.db.QueryRow(query, id).Scan(
 		&user.ID,
@@ -85,6 +85,7 @@ func (h *PostgresUserRepo) GetUserByID(id string) (*domain.User, error) {
 		&user.WebsiteURL,
 		&user.LinkedinURL,
 		&user.TwitterURL,
+		&user.ProfileReadme,
 	)
 
 	if err != nil {
@@ -120,5 +121,11 @@ func (h *PostgresUserRepo) UpdateUserProfile(userID string, data domain.ProfileU
 func (h *PostgresUserRepo) LinkGithubHandle(userID string, githubHandle string) error {
 	query := `UPDATE users SET github_handle = $1, updated_at = NOW() WHERE id = $2`
 	_, err := h.db.Exec(query, githubHandle, userID)
+	return err
+}
+
+func (r *PostgresUserRepo) UpdateProfileReadme(userID string, readme string) error {
+	query := `UPDATE users SET profile_readme = $1, updated_at = NOW() WHERE id = $2`
+	_, err := r.db.Exec(query, readme, userID)
 	return err
 }

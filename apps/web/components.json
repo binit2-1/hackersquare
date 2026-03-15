@@ -21,6 +21,7 @@
   },
   "registries": {
     "@ss-components": "https://shadcnstudio.com/r/components/{name}.json",
-    "@componentry": "https://componentry.fun/r/{name}.json"
+    "@componentry": "https://componentry.fun/r/{name}.json",
+    "@hextaui": "https://hextaui.com/r/{name}.json"
   }
 }

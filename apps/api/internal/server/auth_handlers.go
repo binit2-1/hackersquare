@@ -36,6 +36,10 @@ type LoginRequest struct {
 	Password string `json:"password"`
 }
 
+type UpdateProfileReadmeRequest struct {
+	Readme string `json:"readme"`
+}
+
 func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	var req RegisterRequest
 
@@ -406,4 +410,71 @@ func (h *AuthHandler) GithubLoginCallback(w http.ResponseWriter, r *http.Request
 	}
 	http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
 
+}
+
+func (h *AuthHandler) GenerateProfileSummary(w http.ResponseWriter, r *http.Request) {
+	userID, ok := r.Context().Value("userID").(string)
+	if !ok {
+		http.Error(w, "Unauthorized: User ID not found in context", http.StatusUnauthorized)
+		return
+	}
+
+	user, err := h.UserRepo.GetUserByID(userID)
+	if err != nil || user == nil {
+		http.Error(w, "User not found", http.StatusNotFound)
+		return
+	}
+
+	if user.GithubHandle == "" {
+		http.Error(w, "GitHub account not linked. Please connect your GitHub first.", http.StatusBadRequest)
+		return
+	}
+
+	githubData, err := utils.FetchGithubData(user.GithubHandle)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Failed to fetch GitHub data: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	summary, err := utils.GenerateAIOverview(githubData)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("AI generation failed: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	err = h.UserRepo.UpdateProfileReadme(userID, summary)
+	if err != nil {
+		http.Error(w, "Failed to save summary to database", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{
+		"message": "AI profile generated successfully",
+		"summary": summary,
+	})
+}
+
+func (h *AuthHandler) UpdateProfileReadme(w http.ResponseWriter, r *http.Request) {
+	userID, ok := r.Context().Value("userID").(string)
+	if !ok {
+		http.Error(w, "Unauthorized: User ID not found in context", http.StatusUnauthorized)
+		return
+	}
+
+	var req UpdateProfileReadmeRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request payload", http.StatusBadRequest)
+		return
+	}
+
+	if err := h.UserRepo.UpdateProfileReadme(userID, req.Readme); err != nil {
+		http.Error(w, "Failed to update profile readme", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{"message": "Profile readme updated successfully"})
 }
