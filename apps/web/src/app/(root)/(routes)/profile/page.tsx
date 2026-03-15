@@ -473,16 +473,14 @@ export default function ProfilePage() {
         <section className="space-y-3">
           <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
             <Robot className="size-3.5" />
-            AI Skill Summary
+            Skill Summary
           </h2>
           <Card>
             <CardContent className="p-4 space-y-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
                   <p className="text-sm font-medium">Developer README</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    Write a short Reddit-style bio with markdown tools, or generate one from your GitHub profile.
-                  </p>
+                  
                 </div>
                 {isEditingReadme ? (
                   <Button
@@ -550,18 +548,72 @@ export default function ProfilePage() {
               ) : hasSavedReadme ? (
                 <div
                   className={`rounded-md border border-muted-foreground/20 bg-muted/20 p-4 text-sm ${
-                    shouldCollapseReadme && !showFullReadme ? "max-h-48 overflow-hidden" : ""
+                    shouldCollapseReadme && !showFullReadme
+                      ? "max-h-48 overflow-y-auto pr-2"
+                      : ""
                   }`}
                 >
                   <ReactMarkdown
                     remarkPlugins={[remarkGfm]}
                     components={{
+                      h1: ({ ...props }) => (
+                        <h1 {...props} className="mb-4 text-3xl font-semibold tracking-tight" />
+                      ),
+                      h2: ({ ...props }) => (
+                        <h2 {...props} className="mb-3 mt-6 text-2xl font-semibold tracking-tight" />
+                      ),
+                      h3: ({ ...props }) => (
+                        <h3 {...props} className="mb-2 mt-5 text-xl font-semibold" />
+                      ),
+                      p: ({ ...props }) => (
+                        <p {...props} className="mb-4 leading-7 text-foreground/90" />
+                      ),
+                      ul: ({ ...props }) => (
+                        <ul {...props} className="mb-4 list-disc space-y-2 pl-6" />
+                      ),
+                      ol: ({ ...props }) => (
+                        <ol {...props} className="mb-4 list-decimal space-y-2 pl-6" />
+                      ),
+                      li: ({ ...props }) => (
+                        <li {...props} className="leading-7 text-foreground/90" />
+                      ),
+                      blockquote: ({ ...props }) => (
+                        <blockquote
+                          {...props}
+                          className="mb-4 border-l-2 border-muted-foreground/30 pl-3 italic text-muted-foreground"
+                        />
+                      ),
+                      code: ({ className, children, ...props }) => {
+                        const isBlock = Boolean(className && className.includes("language-"));
+                        if (isBlock) {
+                          return (
+                            <code
+                              {...props}
+                              className="mb-4 block overflow-x-auto rounded bg-muted px-3 py-2 font-mono text-xs"
+                            >
+                              {children}
+                            </code>
+                          );
+                        }
+                        return (
+                          <code
+                            {...props}
+                            className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs"
+                          >
+                            {children}
+                          </code>
+                        );
+                      },
+                      strong: ({ ...props }) => (
+                        <strong {...props} className="font-semibold text-foreground" />
+                      ),
+                      em: ({ ...props }) => <em {...props} className="italic text-foreground/90" />,
                       a: ({ ...props }) => (
                         <a
                           {...props}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-primary underline"
+                          className="font-medium text-primary underline underline-offset-2"
                         />
                       ),
                     }}
