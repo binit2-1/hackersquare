@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { Sparkles } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { ChevronDown } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
 
 type SearchAIOverviewProps = {
   query: string;
@@ -17,12 +18,9 @@ type OverviewResponse = {
 
 function AIOverviewSkeleton() {
   return (
-    <Card className="mb-6 border-muted-foreground/20 bg-linear-to-b from-muted/30 to-background py-4">
+    <Card className="mb-6 border-muted-foreground/20 bg-card py-4">
       <CardHeader className="gap-2 px-4 pb-2">
-        <div className="flex items-center gap-2">
-          <Skeleton className="h-6 w-6 rounded-full" />
-          <Skeleton className="h-5 w-36" />
-        </div>
+        <Skeleton className="h-5 w-36" />
         <Skeleton className="h-4 w-2/3" />
       </CardHeader>
       <CardContent className="space-y-2 px-4 pb-1">
@@ -39,7 +37,10 @@ export function SearchAIOverview({ query }: SearchAIOverviewProps) {
   const [loading, setLoading] = useState(true);
   const [overview, setOverview] = useState("");
   const [hideSection, setHideSection] = useState(false);
+  const [expanded, setExpanded] = useState(false);
+  const [showExpandButton, setShowExpandButton] = useState(false);
 
+  const collapsedContentRef = useRef<HTMLDivElement | null>(null);
   const normalizedQuery = useMemo(() => query.trim(), [query]);
 
   useEffect(() => {
@@ -56,6 +57,8 @@ export function SearchAIOverview({ query }: SearchAIOverviewProps) {
       setLoading(true);
       setHideSection(false);
       setOverview("");
+      setExpanded(false);
+      setShowExpandButton(false);
 
       try {
         const response = await fetch(
@@ -95,41 +98,69 @@ export function SearchAIOverview({ query }: SearchAIOverviewProps) {
     };
   }, [normalizedQuery]);
 
+  useEffect(() => {
+    if (!overview || !collapsedContentRef.current) return;
+    const element = collapsedContentRef.current;
+    setShowExpandButton(element.scrollHeight > element.clientHeight + 1);
+  }, [overview]);
+
   if (hideSection) return null;
   if (loading) return <AIOverviewSkeleton />;
   if (!overview) return null;
 
   return (
-    <Card className="mb-6 border-blue-200/40 bg-linear-to-b from-blue-50/50 to-background py-4 dark:border-blue-400/20 dark:from-blue-950/30">
+    <Card className="mb-6 border-muted-foreground/20 bg-card py-4">
       <CardHeader className="gap-2 px-4 pb-1">
-        <div className="flex items-center gap-2">
-          <Sparkles className="size-4 text-blue-600 dark:text-blue-400" />
-          <h3 className="text-base font-semibold tracking-tight">AI Overview</h3>
-        </div>
+        <h3 className="text-base font-semibold tracking-tight">AI Overview</h3>
         <p className="text-xs text-muted-foreground">Generated insight for "{normalizedQuery}"</p>
       </CardHeader>
 
       <CardContent className="px-4 pb-1">
-        <div className="space-y-3 text-[15px] leading-7 text-foreground/90">
-          <ReactMarkdown
-            remarkPlugins={[remarkGfm]}
-            components={{
-              p: ({ ...props }) => <p {...props} className="leading-7" />,
-              ul: ({ ...props }) => <ul {...props} className="list-disc space-y-2 pl-6" />,
-              ol: ({ ...props }) => <ol {...props} className="list-decimal space-y-2 pl-6" />,
-              strong: ({ ...props }) => <strong {...props} className="font-semibold text-foreground" />,
-              a: ({ ...props }) => (
-                <a
-                  {...props}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="font-medium text-blue-600 underline underline-offset-2 dark:text-blue-400"
-                />
-              ),
-            }}
+        <div className="space-y-3">
+          <div
+            ref={collapsedContentRef}
+            className={`relative text-[15px] leading-7 text-foreground/90 ${
+              expanded ? "" : "max-h-52 overflow-hidden"
+            }`}
           >
-            {overview}
-          </ReactMarkdown>
+            <ReactMarkdown
+              remarkPlugins={[remarkGfm]}
+              components={{
+                p: ({ ...props }) => <p {...props} className="mb-4 leading-7" />,
+                ul: ({ ...props }) => <ul {...props} className="mb-4 list-disc space-y-2 pl-6" />,
+                ol: ({ ...props }) => <ol {...props} className="mb-4 list-decimal space-y-2 pl-6" />,
+                strong: ({ ...props }) => <strong {...props} className="font-semibold text-foreground" />,
+                a: ({ ...props }) => (
+                  <a
+                    {...props}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-medium text-primary underline underline-offset-2"
+                  />
+                ),
+              }}
+            >
+              {overview}
+            </ReactMarkdown>
+
+            {!expanded && showExpandButton && (
+              <div className="pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-linear-to-t from-card via-card/90 to-transparent" />
+            )}
+          </div>
+
+          {showExpandButton && (
+            <Button
+              type="button"
+              variant="outline"
+              className="h-11 w-full rounded-full text-base"
+              onClick={() => setExpanded((prev) => !prev)}
+            >
+              {expanded ? "Show less" : "Show more"}
+              <ChevronDown
+                className={`ml-2 size-4 transition-transform ${expanded ? "rotate-180" : ""}`}
+              />
+            </Button>
+          )}
         </div>
       </CardContent>
     </Card>

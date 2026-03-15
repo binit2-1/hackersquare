@@ -50,7 +50,7 @@ func (h *HackathonHandler) SearchHackathons(w http.ResponseWriter, r *http.Reque
 
 	hackathons, totalCount, err := h.Repo.SearchHackathons(filters)
 	if err != nil {
-		fmt.Printf("❌ Database Search Error: %v\n", err)
+		fmt.Printf("Database Search Error: %v\n", err)
 
 		http.Error(w, "Failed to search hackathons", http.StatusInternalServerError)
 		return
@@ -173,6 +173,7 @@ func (h *HackathonHandler) NearbyHackathons(w http.ResponseWriter, r *http.Reque
 
 
 func (h *HackathonHandler) GetSearchOverview(w http.ResponseWriter, r *http.Request) {
+	queryValues := r.URL.Query()
 	query := r.URL.Query().Get("q")
 	
 	if query == "" {
@@ -191,7 +192,36 @@ func (h *HackathonHandler) GetSearchOverview(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	insight, err  := utils.GenerateSearchInsights(user.ProfileReadme, query)
+	filters := domain.SearchFilters{
+		Query: query,
+		Location: queryValues.Get("location"),
+		PrizeRange: queryValues.Get("prizeRange"),
+		Status: queryValues.Get("status"),
+		Page: 1,
+		Limit: 5,
+	}
+
+	hackathons, _, err := h.Repo.SearchHackathons(filters)
+    if err != nil {
+        http.Error(w, "Failed to fetch hackathon context", http.StatusInternalServerError)
+        return
+    }
+
+	var contextBuilder strings.Builder
+    for i, hack := range hackathons {
+        if i >= 3 { 
+            break 
+        }
+        contextBuilder.WriteString(fmt.Sprintf("- Title: %s\n  Location: %s\n  Tags/Tech: %s\n\n", 
+            hack.Title, hack.Location, strings.Join(hack.Tags, ", ")))
+    }
+
+	hackathonsContext := contextBuilder.String()
+    if hackathonsContext == "" {
+        hackathonsContext = "No specific hackathons found for this exact query."
+    }
+
+	insight, err  := utils.GenerateSearchInsights(user.ProfileReadme, query, hackathonsContext)
 	if err != nil {
 		http.Error(w, "Failed to generate AI overview", http.StatusInternalServerError)
 		return

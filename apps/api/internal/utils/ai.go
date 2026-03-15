@@ -94,7 +94,7 @@ Required Output Format (Strictly follow this Markdown structure):
 }
 
 
-func GenerateSearchInsights(profileReadme string, searchQuery string) (string, error) {
+func GenerateSearchInsights(profileReadme string, searchQuery string, hackathonsContext string) (string, error) {
 	apiKey := os.Getenv("OLLAMA_API_KEY")
 	if apiKey == "" {
 		return "", fmt.Errorf("OLLAMA_API_KEY environment variable not set")
@@ -116,12 +116,12 @@ Your task is to provide a highly concise, 2-sentence insight on how a user's sea
 
 Strict rules:
 - Keep it under 5 to 6 sentences. Be punchy and direct.
-- Identify 1 specific strength from their profile that gives them an edge for this type of hackathon.
+- Identify 1 specific strength from their profile that gives them an edge for the provided hackathons.
 - Do not use formatting like headers or code blocks. Simple text with occasional bolding is fine.
-- If the search query is vague (like "near me"), focus on their general tech stack's versatility.
-- Add some tips based on the hackathons title which hackathons the user should participate based their profile his location, etc.`
-
-	userMessage := fmt.Sprintf("User Profile:\n%s\n\nSearch Query: %s", profileReadme, searchQuery)
+- Add some tips based on the provided hackathon titles regarding which hackathons the user should participate in based on their profile and location.
+- Only give practical advice that the user can action on. Avoid generic statements. Be specific about the hackathon names provided in the context and the user's profile.
+- CRITICAL: If the Top Search Results say "No specific hackathons found", you MUST acknowledge that there are no active hackathons for their exact search. Instead, suggest 2 alternative search terms or categories they should look for that perfectly match their profile.`
+	userMessage := fmt.Sprintf("User Profile:\n%s\n\nSearch Query: %s\n\nTop Search Results:\n%s", profileReadme, searchQuery, hackathonsContext)
 
 	stream := false 
 	req := &api.ChatRequest{
