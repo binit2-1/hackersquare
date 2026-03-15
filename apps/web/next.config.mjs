@@ -1,11 +1,15 @@
 /** @type {import('next').NextConfig} */
+const apiOrigin = (
+  process.env.NEXT_PUBLIC_API_URL || "https://hackersquare-api.up.railway.app"
+).replace(/\/+$/, "");
+
 const nextConfig = {
   async rewrites() {
     return {
       fallback: [
         {
           source: '/api/:path*',
-          destination: 'https://hackersquare-api.up.railway.app/:path*',
+          destination: `${apiOrigin}/:path*`,
         },
       ],
     }
