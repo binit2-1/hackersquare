@@ -5,12 +5,59 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"unicode"
 
 	"github.com/binit2-1/hackersquare/apps/api/internal/domain"
 )
 
 type PostgresEventRepo struct {
 	db *sql.DB
+}
+
+var searchStopWords = map[string]struct{}{
+	"a": {}, "an": {}, "the": {}, "in": {}, "at": {}, "on": {}, "near": {},
+	"for": {}, "to": {}, "of": {}, "with": {}, "and": {}, "or": {},
+	"hackathon": {}, "hackathons": {}, "events": {}, "event": {},
+}
+
+var searchTermCorrections = map[string]string{
+	"banglore": "bangalore",
+}
+
+func sanitizeSearchQuery(raw string) (string, []string) {
+	tokens := strings.FieldsFunc(strings.ToLower(strings.TrimSpace(raw)), func(r rune) bool {
+		return !unicode.IsLetter(r) && !unicode.IsNumber(r)
+	})
+
+	if len(tokens) == 0 {
+		return "", nil
+	}
+
+	seen := make(map[string]struct{})
+	cleanTerms := make([]string, 0, len(tokens))
+
+	for _, token := range tokens {
+		if token == "" {
+			continue
+		}
+
+		if corrected, ok := searchTermCorrections[token]; ok {
+			token = corrected
+		}
+
+		if _, isStopWord := searchStopWords[token]; isStopWord {
+			continue
+		}
+
+		if _, exists := seen[token]; exists {
+			continue
+		}
+
+		seen[token] = struct{}{}
+		cleanTerms = append(cleanTerms, token)
+	}
+
+	return strings.Join(cleanTerms, " "), cleanTerms
 }
 
 func NewPostgreEventRepo(db *sql.DB) domain.HackathonRepository {
@@ -27,9 +74,33 @@ func (h *PostgresEventRepo) SearchHackathons(filters domain.SearchFilters) ([]do
 	argID := 1
 
 	if filters.Query != "" {
-		conditions = append(conditions, fmt.Sprintf("search_vector @@ websearch_to_tsquery('english', $%d)", argID))
-		args = append(args, filters.Query)
-		argID++
+		sanitizedQuery, terms := sanitizeSearchQuery(filters.Query)
+
+		effectiveQuery := sanitizedQuery
+		if effectiveQuery == "" {
+			effectiveQuery = strings.TrimSpace(filters.Query)
+		}
+
+		if effectiveQuery != "" {
+			ftsArgID := argID
+			args = append(args, effectiveQuery)
+			argID++
+
+			textConditions := make([]string, 0, len(terms))
+			for _, term := range terms {
+				textConditions = append(textConditions, fmt.Sprintf("(title ILIKE $%d OR host ILIKE $%d OR location ILIKE $%d)", argID, argID, argID))
+				args = append(args, "%"+term+"%")
+				argID++
+			}
+
+			ftsCondition := fmt.Sprintf("search_vector @@ websearch_to_tsquery('english', $%d)", ftsArgID)
+
+			if len(textConditions) > 0 {
+				conditions = append(conditions, fmt.Sprintf("(%s OR (%s))", ftsCondition, strings.Join(textConditions, " AND ")))
+			} else {
+				conditions = append(conditions, ftsCondition)
+			}
+		}
 	}
 
 	if filters.Status != "" {
@@ -92,11 +163,11 @@ func (h *PostgresEventRepo) SearchHackathons(filters domain.SearchFilters) ([]do
 		page = 1
 	}
 
-	offset := (filters.Page - 1) * filters.Limit
+	offset := (page - 1) * limit
 
 	//append ORDER BY, LIMIT and OFFSET
 	query += fmt.Sprintf(" ORDER BY start_date DESC LIMIT $%d OFFSET $%d", argID, argID+1)
-	args = append(args, filters.Limit, offset)
+	args = append(args, limit, offset)
 
 	rows, err := h.db.Query(query, args...)
 	if err != nil {
