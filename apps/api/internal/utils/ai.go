@@ -92,3 +92,56 @@ Required Output Format (Strictly follow this Markdown structure):
 
 	return finalSummary, nil
 }
+
+
+func GenerateSearchInsights(profileReadme string, searchQuery string) (string, error) {
+	apiKey := os.Getenv("OLLAMA_API_KEY")
+	if apiKey == "" {
+		return "", fmt.Errorf("OLLAMA_API_KEY environment variable not set")
+	} 
+
+
+		baseURL, _ := url.Parse("https://ollama.com")
+		httpClient := &http.Client{
+			Transport: &authTransport{
+				Transport: http.DefaultTransport,
+				APIKey:    apiKey,
+			},
+		}
+
+		client := api.NewClient(baseURL, httpClient)
+
+		systemPrompt := `You are an expert Developer Advocate. 
+Your task is to provide a highly concise, 2-sentence insight on how a user's search query aligns with their developer profile.
+
+Strict rules:
+- Keep it under 5 to 6 sentences. Be punchy and direct.
+- Identify 1 specific strength from their profile that gives them an edge for this type of hackathon.
+- Do not use formatting like headers or code blocks. Simple text with occasional bolding is fine.
+- If the search query is vague (like "near me"), focus on their general tech stack's versatility.
+- Add some tips based on the hackathons title which hackathons the user should participate based their profile his location, etc.`
+
+	userMessage := fmt.Sprintf("User Profile:\n%s\n\nSearch Query: %s", profileReadme, searchQuery)
+
+	stream := false 
+	req := &api.ChatRequest{
+		Model: "minimax-m2.5:cloud", 
+		Messages: []api.Message{
+			{Role: "system", Content: systemPrompt},
+			{Role: "user", Content: userMessage},
+		},
+		Stream: &stream,
+	}
+
+	var insight string
+	err := client.Chat(context.Background(), req, func(resp api.ChatResponse) error {
+		insight += resp.Message.Content
+		return nil
+	})
+
+	if err != nil {
+		return "", err
+	}
+
+	return insight, nil
+}

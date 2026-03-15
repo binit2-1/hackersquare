@@ -8,15 +8,18 @@ import (
 	"strings"
 
 	"github.com/binit2-1/hackersquare/apps/api/internal/domain"
+	"github.com/binit2-1/hackersquare/apps/api/internal/utils"
 )
 
 type HackathonHandler struct {
 	Repo domain.HackathonRepository
+	UserRepo domain.UserRepository
 }
 
-func NewHackathonHandler(repo domain.HackathonRepository) *HackathonHandler {
+func NewHackathonHandler(repo domain.HackathonRepository, userRepo domain.UserRepository) *HackathonHandler {
 	return &HackathonHandler{
 		Repo: repo,
+		UserRepo: userRepo,
 	}
 }
 
@@ -166,4 +169,38 @@ func (h *HackathonHandler) NearbyHackathons(w http.ResponseWriter, r *http.Reque
 		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
 		return
 	}
+}
+
+
+func (h *HackathonHandler) GetSearchOverview(w http.ResponseWriter, r *http.Request) {
+	query := r.URL.Query().Get("q")
+	
+	if query == "" {
+		query = "upcoming hackathons"
+	}
+
+	userID, ok := r.Context().Value("userID").(string)
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	user, err := h.UserRepo.GetUserByID(userID)
+	if err != nil || user.ProfileReadme == "" {
+		http.Error(w, "Profile README not found", http.StatusNotFound)
+		return
+	}
+
+	insight, err  := utils.GenerateSearchInsights(user.ProfileReadme, query)
+	if err != nil {
+		http.Error(w, "Failed to generate AI overview", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{
+		"overview": insight,
+	})
+
 }

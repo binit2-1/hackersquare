@@ -45,7 +45,7 @@ func main() {
 	bookmarkRepo := pg.NewPostgresBookmarkRepo(db)
 
 	// Initialize handlers
-	hackathonHandler := server.NewHackathonHandler(pgRepo)
+	hackathonHandler := server.NewHackathonHandler(pgRepo, authRepo)
 	bookmarkHandler := server.NewBookmarkHandler(bookmarkRepo)
 	authHandler := server.NewAuthHandler(authRepo)
 
@@ -62,6 +62,7 @@ func main() {
 	mux.HandleFunc("POST /v1/bookmarks", server.AuthMiddleware(bookmarkHandler.AddBookmark))
 	mux.HandleFunc("DELETE /v1/bookmarks", server.AuthMiddleware(bookmarkHandler.RemoveBookmark))
 	mux.HandleFunc("GET /v1/bookmarks", server.AuthMiddleware(bookmarkHandler.GetBookmarksByUser))
+	mux.HandleFunc("GET /v1/search/overview", server.AuthMiddleware(hackathonHandler.GetSearchOverview))
 
 	//me
 	mux.HandleFunc("GET /v1/auth/me", server.AuthMiddleware(authHandler.GetMe))

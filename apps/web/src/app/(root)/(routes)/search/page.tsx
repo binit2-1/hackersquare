@@ -1,5 +1,6 @@
 import { HackathonCard } from "@/components/hackathon-card";
 import { NearMeEmptyState } from "@/components/near-me-empty-state";
+import { SearchAIOverview } from "@/components/search-ai-overview";
 import { headers } from "next/headers";
 import iso3166 from "iso-3166-2";
 import {
@@ -187,6 +188,7 @@ const SearchPage = async ({
           <NearMeEmptyState />
         ) : (
           <>
+            {queryText && <SearchAIOverview query={queryText} />}
             <p className="mb-4 text-sm text-gray-500">
               Showing {hackathons.length} of {metadata.totalRecords} hackathons
             </p>
