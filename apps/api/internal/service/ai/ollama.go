@@ -34,7 +34,7 @@ type OllamaService struct {
     httpClient *http.Client
 }
 
-// NewOllamaService now requires zero filesystem hacks or SDK initializations.
+// NewOllamaService 
 func NewOllamaService(apiKey string, model string) (domain.AIService, error) {
     if apiKey == "" {
         return nil, fmt.Errorf("OLLAMA_API_KEY environment variable not set")
@@ -47,7 +47,7 @@ func NewOllamaService(apiKey string, model string) (domain.AIService, error) {
     }, nil
 }
 
-// makeChatRequest is a DRY helper function to handle the raw HTTP call
+
 func (s *OllamaService) makeChatRequest(ctx context.Context, systemPrompt, userMessage string) (string, error) {
     reqBody := chatRequest{
         Model:    s.model,
