@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"os"
+	"path/filepath"
 
 	"github.com/binit2-1/hackersquare/apps/api/internal/domain"
 	"github.com/ollama/ollama/api"
@@ -25,9 +27,30 @@ type OllamaService struct {
 	model  string
 }
 
+func ensureHomeForRuntime() error {
+	if os.Getenv("HOME") != "" {
+		return nil
+	}
+
+	fallbackHome := filepath.Join(os.TempDir(), "hackersquare-home")
+	if err := os.MkdirAll(fallbackHome, 0o700); err != nil {
+		return fmt.Errorf("failed to create fallback HOME: %w", err)
+	}
+
+	if err := os.Setenv("HOME", fallbackHome); err != nil {
+		return fmt.Errorf("failed to set fallback HOME: %w", err)
+	}
+
+	return nil
+}
+
 func NewOllamaService(apiKey string, model string) (domain.AIService, error) {
 	if apiKey == "" {
 		return nil, fmt.Errorf("OLLAMA_API_KEY environment variable not set")
+	}
+
+	if err := ensureHomeForRuntime(); err != nil {
+		return nil, err
 	}
 
 	cloudURL, err := url.Parse(`https://ollama.com`)
