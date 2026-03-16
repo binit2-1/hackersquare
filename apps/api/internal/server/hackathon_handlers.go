@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -18,6 +19,18 @@ type HackathonHandler struct {
 	AIService domain.AIService
 }
 
+var nearbyTermPattern = regexp.MustCompile(`(?i)\bnear\s*me\b|\bnearby\b`)
+
+func replaceNearbyTermsWithCity(query, city string) string {
+	trimmedQuery := strings.TrimSpace(query)
+	if trimmedQuery == "" || strings.TrimSpace(city) == "" {
+		return trimmedQuery
+	}
+
+	replaced := nearbyTermPattern.ReplaceAllString(trimmedQuery, city)
+	return strings.Join(strings.Fields(replaced), " ")
+}
+
 func NewHackathonHandler(repo domain.HackathonRepository, userRepo domain.UserRepository, aiService domain.AIService) *HackathonHandler {
 	return &HackathonHandler{
 		Repo:      repo,
@@ -29,9 +42,13 @@ func NewHackathonHandler(repo domain.HackathonRepository, userRepo domain.UserRe
 func (h *HackathonHandler) SearchHackathons(w http.ResponseWriter, r *http.Request) {
 
 	queryValues := r.URL.Query()
+	query := strings.TrimSpace(queryValues.Get("q"))
+	city := strings.TrimSpace(queryValues.Get("clientCity"))
+
+	normalizedQuery := replaceNearbyTermsWithCity(query, city)
 
 	filters := domain.SearchFilters{
-		Query:      queryValues.Get("q"),
+		Query:      normalizedQuery,
 		Location:   queryValues.Get("location"),
 		PrizeRange: queryValues.Get("prizeRange"),
 		Status:     queryValues.Get("status"),

@@ -13,6 +13,65 @@ type PostgresEventRepo struct {
 	db *sql.DB
 }
 
+var searchStopWords = map[string]struct{}{
+	"a":            {},
+	"an":           {},
+	"the":          {},
+	"for":          {},
+	"to":           {},
+	"of":           {},
+	"in":           {},
+	"on":           {},
+	"at":           {},
+	"by":           {},
+	"with":         {},
+	"about":        {},
+	"and":          {},
+	"or":           {},
+	"is":           {},
+	"are":          {},
+	"nearby":       {},
+	"me":           {},
+	"hackathon":    {},
+	"hackathons":   {},
+	"hack":         {},
+	"hacks":        {},
+	"event":        {},
+	"events":       {},
+	"competition":  {},
+	"competitions": {},
+	"challenge":    {},
+	"challenges":   {},
+}
+
+func normalizeSearchQuery(rawQuery string) string {
+	trimmed := strings.TrimSpace(rawQuery)
+	if trimmed == "" {
+		return ""
+	}
+
+	words := strings.Fields(strings.ToLower(trimmed))
+	filtered := make([]string, 0, len(words))
+	for _, word := range words {
+		cleaned := strings.Trim(word, ".,!?:;()[]{}\"'`")
+		if cleaned == "" {
+			continue
+		}
+
+		if _, isStopWord := searchStopWords[cleaned]; isStopWord {
+			continue
+		}
+
+		filtered = append(filtered, cleaned)
+	}
+
+	if len(filtered) == 0 {
+		return ""
+	}
+
+	return strings.Join(filtered, " ")
+}
+
 func NewPostgreEventRepo(db *sql.DB) domain.HackathonRepository {
 	return &PostgresEventRepo{
 		db: db,
@@ -27,9 +86,12 @@ func (h *PostgresEventRepo) SearchHackathons(filters domain.SearchFilters) ([]do
 	argID := 1
 
 	if filters.Query != "" {
-		conditions = append(conditions, fmt.Sprintf("search_vector @@ websearch_to_tsquery('english', $%d)", argID))
-		args = append(args, filters.Query)
-		argID++
+		normalizedQuery := normalizeSearchQuery(filters.Query)
+		if normalizedQuery != "" {
+			conditions = append(conditions, fmt.Sprintf("search_vector @@ websearch_to_tsquery('english', $%d)", argID))
+			args = append(args, normalizedQuery)
+			argID++
+		}
 	}
 
 	if filters.Status != "" {
