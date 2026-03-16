@@ -154,11 +154,11 @@ func (h *PostgresEventRepo) SearchHackathons(filters domain.SearchFilters) ([]do
 		page = 1
 	}
 
-	offset := (filters.Page - 1) * filters.Limit
+	offset := (page - 1) * limit
 
 	//append ORDER BY, LIMIT and OFFSET
 	query += fmt.Sprintf(" ORDER BY start_date DESC LIMIT $%d OFFSET $%d", argID, argID+1)
-	args = append(args, filters.Limit, offset)
+	args = append(args, limit, offset)
 
 	rows, err := h.db.Query(query, args...)
 	if err != nil {

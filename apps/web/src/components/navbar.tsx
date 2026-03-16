@@ -197,6 +197,7 @@ export function Navbar() {
       setSearchOpen(false);
       const current = new URLSearchParams(Array.from(searchParams.entries()));
       current.set("q", searchQuery.trim());
+      current.delete("page");
       router.push(`/search?${current.toString()}`);
     }
   };

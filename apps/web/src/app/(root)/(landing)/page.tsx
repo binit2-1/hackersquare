@@ -8,8 +8,13 @@ const page = () => {
   const handleSubmit = (value?: string | React.SyntheticEvent) => {
     const params = new URLSearchParams();
     if (typeof value === "string") {
-      params.append("q", value.trim());
+      const query = value.trim();
+      if (query) {
+        params.set("q", query);
+      }
     }
+    // Fresh text searches should start from first page.
+    params.delete("page");
     
 
     console.log("Submitting search...", value);
