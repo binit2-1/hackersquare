@@ -8,18 +8,19 @@ import (
 	"strings"
 
 	"github.com/binit2-1/hackersquare/apps/api/internal/domain"
-	"github.com/binit2-1/hackersquare/apps/api/internal/utils"
 )
 
 type HackathonHandler struct {
-	Repo domain.HackathonRepository
-	UserRepo domain.UserRepository
+	Repo      domain.HackathonRepository
+	UserRepo  domain.UserRepository
+	AIService domain.AIService
 }
 
-func NewHackathonHandler(repo domain.HackathonRepository, userRepo domain.UserRepository) *HackathonHandler {
+func NewHackathonHandler(repo domain.HackathonRepository, userRepo domain.UserRepository, aiService domain.AIService) *HackathonHandler {
 	return &HackathonHandler{
-		Repo: repo,
-		UserRepo: userRepo,
+		Repo:      repo,
+		UserRepo:  userRepo,
+		AIService: aiService,
 	}
 }
 
@@ -141,7 +142,7 @@ func (h *HackathonHandler) NearbyHackathons(w http.ResponseWriter, r *http.Reque
 
 	hackathons, totalCount, err := h.Repo.NearbyHackathons(city, country, page, limit)
 	if err != nil {
-		fmt.Printf("❌ Nearby Query Error: %v\n", err)
+		fmt.Printf("Nearby Query Error: %v\n", err)
 		http.Error(w, "Failed to fetch nearby hackathons", http.StatusInternalServerError)
 		return
 	}
@@ -171,11 +172,10 @@ func (h *HackathonHandler) NearbyHackathons(w http.ResponseWriter, r *http.Reque
 	}
 }
 
-
 func (h *HackathonHandler) GetSearchOverview(w http.ResponseWriter, r *http.Request) {
 	queryValues := r.URL.Query()
 	query := r.URL.Query().Get("q")
-	
+
 	if query == "" {
 		query = "upcoming hackathons"
 	}
@@ -186,42 +186,42 @@ func (h *HackathonHandler) GetSearchOverview(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	user, err := h.UserRepo.GetUserByID(userID)
-	if err != nil || user.ProfileReadme == "" {
+	userProfile, err := h.UserRepo.GetUserByID(userID)
+	if err != nil || userProfile.ProfileReadme == "" {
 		http.Error(w, "Profile README not found", http.StatusNotFound)
 		return
 	}
 
 	filters := domain.SearchFilters{
-		Query: query,
-		Location: queryValues.Get("location"),
+		Query:      query,
+		Location:   queryValues.Get("location"),
 		PrizeRange: queryValues.Get("prizeRange"),
-		Status: queryValues.Get("status"),
-		Page: 1,
-		Limit: 5,
+		Status:     queryValues.Get("status"),
+		Page:       1,
+		Limit:      5,
 	}
 
 	hackathons, _, err := h.Repo.SearchHackathons(filters)
-    if err != nil {
-        http.Error(w, "Failed to fetch hackathon context", http.StatusInternalServerError)
-        return
-    }
+	if err != nil {
+		http.Error(w, "Failed to fetch hackathon context", http.StatusInternalServerError)
+		return
+	}
 
 	var contextBuilder strings.Builder
-    for i, hack := range hackathons {
-        if i >= 3 { 
-            break 
-        }
-        contextBuilder.WriteString(fmt.Sprintf("- Title: %s\n  Location: %s\n  Tags/Tech: %s\n\n", 
-            hack.Title, hack.Location, strings.Join(hack.Tags, ", ")))
-    }
+	for i, hack := range hackathons {
+		if i >= 3 {
+			break
+		}
+		contextBuilder.WriteString(fmt.Sprintf("- Title: %s\n  Location: %s\n  Tags/Tech: %s\n\n",
+			hack.Title, hack.Location, strings.Join(hack.Tags, ", ")))
+	}
 
 	hackathonsContext := contextBuilder.String()
-    if hackathonsContext == "" {
-        hackathonsContext = "No specific hackathons found for this exact query."
-    }
+	if hackathonsContext == "" {
+		hackathonsContext = "No specific hackathons found for this exact query."
+	}
 
-	insight, err  := utils.GenerateSearchInsights(user.ProfileReadme, query, hackathonsContext)
+	insight, err := h.AIService.GenerateSearchInsights(r.Context(), userProfile.ProfileReadme, query, hackathonsContext)
 	if err != nil {
 		http.Error(w, "Failed to generate AI overview", http.StatusInternalServerError)
 		return

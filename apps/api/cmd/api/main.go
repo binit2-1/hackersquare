@@ -11,6 +11,7 @@ import (
 	"github.com/binit2-1/hackersquare/apps/api/internal/repository/pg"
 	scraper "github.com/binit2-1/hackersquare/apps/api/internal/scaper"
 	"github.com/binit2-1/hackersquare/apps/api/internal/server"
+	"github.com/binit2-1/hackersquare/apps/api/internal/service/ai"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/joho/godotenv"
 )
@@ -39,15 +40,20 @@ func main() {
 
 	defer db.Close()
 
+	aiService, err := ai.NewOllamaService(os.Getenv("OLLAMA_API_KEY"), "minimax-m2.5:cloud")
+	if err != nil {
+		log.Fatalf("Failed to initialize AI service: %v", err)
+	}
+
 	// Initialize repositories
 	pgRepo := pg.NewPostgreEventRepo(db)
 	authRepo := pg.NewPostgreUserRepo(db)
 	bookmarkRepo := pg.NewPostgresBookmarkRepo(db)
 
 	// Initialize handlers
-	hackathonHandler := server.NewHackathonHandler(pgRepo, authRepo)
+	hackathonHandler := server.NewHackathonHandler(pgRepo, authRepo, aiService)
 	bookmarkHandler := server.NewBookmarkHandler(bookmarkRepo)
-	authHandler := server.NewAuthHandler(authRepo)
+	authHandler := server.NewAuthHandler(authRepo, aiService)
 
 	mux := http.NewServeMux()
 

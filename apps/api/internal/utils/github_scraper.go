@@ -19,7 +19,6 @@ type GitHubRepo struct {
 	UpdatedAt   time.Time `json:"updated_at"`
 }
 
-
 func FetchGithubData(username string) (string, error) {
 
 	apiURL := fmt.Sprintf("https://api.github.com/users/%s/repos?sort=updated&per_page=15", username)
@@ -69,7 +68,7 @@ func FetchGithubData(username string) (string, error) {
 
 		validReposCount++
 		fmt.Fprintf(&sb, "- Repository: %s\n", repo.Name)
-		
+
 		if repo.Description != "" {
 			fmt.Fprintf(&sb, "  Description: %s\n", repo.Description)
 		}
@@ -79,7 +78,7 @@ func FetchGithubData(username string) (string, error) {
 		if len(repo.Topics) > 0 {
 			fmt.Fprintf(&sb, "  Topics: %s\n", strings.Join(repo.Topics, ", "))
 		}
-		
+
 		fmt.Fprintf(&sb, "  Stars: %d\n\n", repo.Stargazers)
 	}
 

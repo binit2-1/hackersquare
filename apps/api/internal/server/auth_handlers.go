@@ -16,12 +16,14 @@ import (
 )
 
 type AuthHandler struct {
-	UserRepo domain.UserRepository
+	UserRepo  domain.UserRepository
+	AiService domain.AIService
 }
 
-func NewAuthHandler(repo domain.UserRepository) *AuthHandler {
+func NewAuthHandler(repo domain.UserRepository, aiService domain.AIService) *AuthHandler {
 	return &AuthHandler{
-		UserRepo: repo,
+		UserRepo:  repo,
+		AiService: aiService,
 	}
 }
 
@@ -436,7 +438,7 @@ func (h *AuthHandler) GenerateProfileSummary(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	summary, err := utils.GenerateAIOverview(githubData)
+	summary, err := h.AiService.GenerateProfileReadme(r.Context(), githubData)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("AI generation failed: %v", err), http.StatusInternalServerError)
 		return
