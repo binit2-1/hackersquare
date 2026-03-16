@@ -1,11 +1,13 @@
 package server
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/binit2-1/hackersquare/apps/api/internal/domain"
 )
@@ -187,9 +189,20 @@ func (h *HackathonHandler) GetSearchOverview(w http.ResponseWriter, r *http.Requ
 	}
 
 	userProfile, err := h.UserRepo.GetUserByID(userID)
-	if err != nil || userProfile.ProfileReadme == "" {
-		http.Error(w, "Profile README not found", http.StatusNotFound)
+	if err != nil || userProfile == nil {
+		http.Error(w, "Profile not found", http.StatusNotFound)
 		return
+	}
+
+	profileContext := strings.TrimSpace(userProfile.ProfileReadme)
+	if profileContext == "" {
+		profileContext = fmt.Sprintf(
+			"Name: %s\nHeadline: %s\nLocation: %s\nGitHub: %s",
+			userProfile.Name,
+			userProfile.Headline,
+			userProfile.Location,
+			userProfile.GithubHandle,
+		)
 	}
 
 	filters := domain.SearchFilters{
@@ -221,8 +234,12 @@ func (h *HackathonHandler) GetSearchOverview(w http.ResponseWriter, r *http.Requ
 		hackathonsContext = "No specific hackathons found for this exact query."
 	}
 
-	insight, err := h.AIService.GenerateSearchInsights(r.Context(), userProfile.ProfileReadme, query, hackathonsContext)
+	aiCtx, cancel := context.WithTimeout(r.Context(), 20*time.Second)
+	defer cancel()
+
+	insight, err := h.AIService.GenerateSearchInsights(aiCtx, profileContext, query, hackathonsContext)
 	if err != nil {
+		fmt.Printf("AI overview generation error: %v\n", err)
 		http.Error(w, "Failed to generate AI overview", http.StatusInternalServerError)
 		return
 	}

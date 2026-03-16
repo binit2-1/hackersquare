@@ -2,12 +2,14 @@ package server
 
 import (
 	"bytes"
+	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/binit2-1/hackersquare/apps/api/internal/domain"
@@ -107,14 +109,24 @@ func (h *AuthHandler) setAuthCookie(w http.ResponseWriter, user *domain.User) er
 		return err
 	}
 
+	baseURL := strings.Trim(strings.ToLower(os.Getenv("NEXT_APP_BASE_URL")), "'\"")
+	useSecureCookie := true
+	if strings.HasPrefix(baseURL, "http://localhost") || strings.HasPrefix(baseURL, "http://127.0.0.1") {
+		useSecureCookie = false
+	}
+	sameSiteMode := http.SameSiteLaxMode
+	if useSecureCookie {
+		sameSiteMode = http.SameSiteNoneMode
+	}
+
 	cookie := &http.Cookie{
 		Name:     "auth_token",
 		Value:    tokenString,
 		Path:     "/",
 		Expires:  time.Now().Add(24 * time.Hour),
 		HttpOnly: true,
-		Secure:   true,
-		SameSite: http.SameSiteNoneMode,
+		Secure:   useSecureCookie,
+		SameSite: sameSiteMode,
 	}
 
 	http.SetCookie(w, cookie)
@@ -168,6 +180,15 @@ func (h *AuthHandler) GetMe(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
+	baseURL := strings.Trim(strings.ToLower(os.Getenv("NEXT_APP_BASE_URL")), "'\"")
+	useSecureCookie := true
+	if strings.HasPrefix(baseURL, "http://localhost") || strings.HasPrefix(baseURL, "http://127.0.0.1") {
+		useSecureCookie = false
+	}
+	sameSiteMode := http.SameSiteLaxMode
+	if useSecureCookie {
+		sameSiteMode = http.SameSiteNoneMode
+	}
 
 	cookie := &http.Cookie{
 		Name:     "auth_token",
@@ -175,8 +196,8 @@ func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 		Path:     "/",
 		Expires:  time.Unix(0, 0),
 		HttpOnly: true,
-		Secure:   true,
-		SameSite: http.SameSiteNoneMode,
+		Secure:   useSecureCookie,
+		SameSite: sameSiteMode,
 	}
 
 	http.SetCookie(w, cookie)
@@ -427,18 +448,30 @@ func (h *AuthHandler) GenerateProfileSummary(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	if user.GithubHandle == "" {
-		http.Error(w, "GitHub account not linked. Please connect your GitHub first.", http.StatusBadRequest)
-		return
+	profileSnapshot := fmt.Sprintf(
+		"name: %s\nheadline: %s\nlocation: %s\ngithub_handle: %s\nwebsite: %s\nlinkedin: %s\ntwitter: %s",
+		user.Name,
+		user.Headline,
+		user.Location,
+		user.GithubHandle,
+		user.WebsiteURL,
+		user.LinkedinURL,
+		user.TwitterURL,
+	)
+
+	githubData := profileSnapshot
+	if user.GithubHandle != "" {
+		if fetchedData, fetchErr := utils.FetchGithubData(user.GithubHandle); fetchErr == nil {
+			githubData = fetchedData
+		} else {
+			fmt.Printf("GitHub fetch failed for %s, using profile fallback: %v\n", user.GithubHandle, fetchErr)
+		}
 	}
 
-	githubData, err := utils.FetchGithubData(user.GithubHandle)
-	if err != nil {
-		http.Error(w, fmt.Sprintf("Failed to fetch GitHub data: %v", err), http.StatusInternalServerError)
-		return
-	}
+	aiCtx, cancel := context.WithTimeout(r.Context(), 20*time.Second)
+	defer cancel()
 
-	summary, err := h.AiService.GenerateProfileReadme(r.Context(), githubData)
+	summary, err := h.AiService.GenerateProfileReadme(aiCtx, githubData)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("AI generation failed: %v", err), http.StatusInternalServerError)
 		return
