@@ -5,25 +5,41 @@ import { ArrowRightIcon, ChevronDownIcon } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 
+import AuthModal from "@/components/auth-modal";
 import { HackathonCard } from "@/components/hackathon-card";
 import { SearchBar } from "@/components/search-bar";
+import { useAuth } from "@/context/AuthContext";
 import {
   CraftButton,
   CraftButtonIcon,
   CraftButtonLabel,
 } from "@/components/ui/craft-button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import type { HackathonProps } from "@/models/hackathon";
 
 type FeedPhase = "search" | "transitioning" | "recommendations";
 
 const LandingPage = () => {
   const router = useRouter();
+  const { user, isLoading } = useAuth();
   const [phase, setPhase] = useState<FeedPhase>("search");
   const [isLoadingRecommendations, setIsLoadingRecommendations] = useState(false);
   const [recommendationsError, setRecommendationsError] = useState<string | null>(
     null,
   );
   const [recommendations, setRecommendations] = useState<HackathonProps[]>([]);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [showRecommendationsAccessModal, setShowRecommendationsAccessModal] =
+    useState(false);
 
   const handleSearchSubmit = (value?: string) => {
     const params = new URLSearchParams();
@@ -58,6 +74,11 @@ const LandingPage = () => {
 
   const handleRecommendationsClick = async () => {
     if (isLoadingRecommendations || phase === "transitioning") return;
+    if (isLoading) return;
+    if (!isLoading && !user) {
+      setShowRecommendationsAccessModal(true);
+      return;
+    }
 
     setPhase("recommendations");
     setRecommendationsError(null);
@@ -111,7 +132,7 @@ const LandingPage = () => {
               <CraftButton
                 type="button"
                 onClick={handleRecommendationsClick}
-                disabled={isLoadingRecommendations}
+                disabled={isLoadingRecommendations || isLoading}
                 className="min-w-52"
               >
                 <CraftButtonLabel>Recommendations</CraftButtonLabel>
@@ -187,6 +208,31 @@ const LandingPage = () => {
           </motion.section>
         )}
       </AnimatePresence>
+      <AlertDialog
+        open={showRecommendationsAccessModal}
+        onOpenChange={setShowRecommendationsAccessModal}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Sign in to access recommendations</AlertDialogTitle>
+            <AlertDialogDescription>
+              Get personalized hackathon recommendations based on your profile and interests.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Maybe later</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                setShowRecommendationsAccessModal(false);
+                setShowAuthModal(true);
+              }}
+            >
+              Sign In / Sign Up
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      <AuthModal open={showAuthModal} onOpenChange={setShowAuthModal} initialTab="signin" />
     </div>
   );
 };

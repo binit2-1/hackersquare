@@ -35,9 +35,11 @@ interface HackathonCardProps {
 export function HackathonCard({ hackathon }: HackathonCardProps) {
   const {isBookmarked, toggleBookmark} = useBookmarks();
   const bookmarked = isBookmarked(hackathon.id);
+  const visibleTags = (hackathon.tags ?? []).slice(0, 3);
+  const extraTagsCount = Math.max((hackathon.tags ?? []).length - visibleTags.length, 0);
 
   return (
-    <Card className="flex flex-col gap-0 py-0 overflow-hidden">
+    <Card className="flex h-full flex-col gap-0 overflow-hidden py-0">
       <CardHeader className="flex flex-row items-start justify-between gap-3 px-5 pt-5 pb-3">
         <div className="flex flex-col gap-1 min-w-0">
           <CardTitle className="text-base leading-snug line-clamp-2">
@@ -71,9 +73,9 @@ export function HackathonCard({ hackathon }: HackathonCardProps) {
           <span>{formatDateRange(hackathon.start_date, hackathon.end_date)}</span>
         </div>
 
-        <div className="flex items-center gap-2 text-muted-foreground">
+        <div className="flex items-center gap-2 text-muted-foreground min-w-0">
           <MapPin className="size-3.5 shrink-0" />
-          <span>{hackathon.location}</span>
+          <span className="truncate">{hackathon.location}</span>
         </div>
 
         <div className="flex items-center gap-2 font-medium">
@@ -81,14 +83,18 @@ export function HackathonCard({ hackathon }: HackathonCardProps) {
           <span>{`$${hackathon.prize_usd.toLocaleString()}`}</span>
         </div>
 
-        <div className="flex flex-wrap gap-1.5 pt-1">
-            {/* Safely fallback to an empty array to prevent the .map crash */}
-            {(hackathon.tags ?? []).map((tag) => (
-              <Badge key={tag} variant="secondary" className="text-xs px-2 py-0.5">
-                {tag}
-              </Badge>
-            ))}
-          </div>
+        <div className="flex gap-1.5 overflow-hidden pt-1">
+          {visibleTags.map((tag) => (
+            <Badge key={tag} variant="secondary" className="truncate text-xs px-2 py-0.5">
+              {tag}
+            </Badge>
+          ))}
+          {extraTagsCount > 0 && (
+            <Badge variant="secondary" className="text-xs px-2 py-0.5">
+              +{extraTagsCount}
+            </Badge>
+          )}
+        </div>
       </CardContent>
 
       <CardFooter className="px-5 pb-5 pt-0">
