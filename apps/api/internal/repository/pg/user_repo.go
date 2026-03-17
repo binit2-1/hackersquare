@@ -133,9 +133,9 @@ func (h *PostgresUserRepo) GetUserByID(id string) (*domain.User, error) {
 }
 
 func (h *PostgresUserRepo) UpdateUserProfile(userID string, data domain.ProfileUpdateRequest) error {
-	query := `UPDATE users SET headline = $1, location = $2, website_url = $3, linkedin_url = $4, twitter_url = $5, updated_at = NOW() WHERE id = $6`
+	query := `UPDATE users SET headline = $1, location = $2, website_url = $3, linkedin_url = $4, twitter_url = $5, tech_tags = $6, updated_at = NOW() WHERE id = $7`
 
-	result, err := h.db.Exec(query, data.Headline, data.Location, data.WebsiteURL, data.LinkedinURL, data.TwitterURL, userID)
+	result, err := h.db.Exec(query, data.Headline, data.Location, data.WebsiteURL, data.LinkedinURL, data.TwitterURL, data.TechTags, userID)
 	if err != nil {
 		return fmt.Errorf("failed to update user profile: %w", err)
 	}

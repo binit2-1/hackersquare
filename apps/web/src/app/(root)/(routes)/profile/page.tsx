@@ -69,20 +69,10 @@ export default function ProfilePage() {
     setSavedReadme(user.profileReadme || "");
     setIsEditingReadme(!(user.profileReadme || "").trim());
 
-    try {
-      const storedSkills = localStorage.getItem(`${TECH_STACK_STORAGE_PREFIX}${user.id}`);
-      if (!storedSkills) {
-        setTechStack([]);
-        return;
-      }
-
-      const parsedSkills = JSON.parse(storedSkills);
-      if (Array.isArray(parsedSkills)) {
-        setTechStack(parsedSkills.filter((skill): skill is string => typeof skill === "string"));
-      }
-    } catch {
-      setTechStack([]);
-    }
+    const normalizedTags = Array.isArray(user.tech_tags)
+      ? user.tech_tags.filter((skill): skill is string => typeof skill === "string")
+      : [];
+    setTechStack(normalizedTags);
   }, [user]);
 
   useEffect(() => {
@@ -125,6 +115,7 @@ export default function ProfilePage() {
           website_url: website,
           linkedin_url: linkedin,
           twitter_url: twitter,
+          tech_tags: techStack,
         }),
       });
       if (!res.ok) throw new Error("Failed to save profile");

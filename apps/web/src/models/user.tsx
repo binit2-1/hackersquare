@@ -9,6 +9,7 @@ export type User = {
     linkedin_url: string;
     twitter_url: string;
     profileReadme?: string;
+    tech_tags?: string[];
 };
 
 export type AuthContextType = {
