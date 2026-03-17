@@ -292,7 +292,7 @@ func (h *PostgresEventRepo) GetUserRecommendations(tags []string, state string, 
 	query := `
     SELECT id, title, COALESCE(host, 'Unknown Host'), COALESCE(location, 'TBA'), COALESCE(prize_usd, 0.0), start_date, end_date, COALESCE(apply_url, '')
     FROM hackathons
-    WHERE end_date >= CURRENT_DATE
+    WHERE start_date >= CURRENT_DATE + INTERVAL '5 days'
     `
 
 
