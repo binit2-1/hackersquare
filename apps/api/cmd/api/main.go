@@ -85,6 +85,7 @@ func main() {
 
 	//AI
 	mux.HandleFunc("POST /v1/users/profile/generate-summary", server.AuthMiddleware(authHandler.GenerateProfileSummary))
+	mux.HandleFunc("GET /v1/recommendations", server.AuthMiddleware(hackathonHandler.GetRecommendations))
 
 	fmt.Printf("Starting server on port %s\n", port)
 
