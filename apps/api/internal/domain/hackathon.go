@@ -27,4 +27,5 @@ type HackathonRepository interface {
 	SearchHackathons(filters SearchFilters) ([]Hackathon, int, error)
 	NearbyHackathons(city, country string, page, limit int) ([]Hackathon, int, error)
 	DeleteExpiredHackathons() (int64, error)
+	GetUserRecommendations(tags []string, state, country string, limit int) ([]Hackathon, error)
 }

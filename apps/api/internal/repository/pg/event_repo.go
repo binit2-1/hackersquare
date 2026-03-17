@@ -282,3 +282,58 @@ func (h *PostgresEventRepo) DeleteExpiredHackathons() (int64, error) {
 	fmt.Printf("Deleted %d expired hackathons\n", rowsAffected)
 	return rowsAffected, nil
 }
+
+func (h *PostgresEventRepo) GetUserRecommendations(tags []string, state string, country string, limit int) ([]domain.Hackathon, error) {
+	tagQuery := strings.Join(tags, " ")
+	if tagQuery == "" {
+		tagQuery = "hackathon"
+	}
+
+	query := `
+    SELECT id, title, COALESCE(host, 'Unknown Host'), COALESCE(location, 'TBA'), COALESCE(prize_usd, 0.0), start_date, end_date, COALESCE(apply_url, '')
+    FROM hackathons
+    WHERE end_date >= CURRENT_DATE
+    `
+
+
+	var args []any
+	argID := 1
+	var orderClauses []string
+
+	if state != "" {
+        orderClauses = append(orderClauses, fmt.Sprintf("(location ILIKE $%d) DESC", argID))
+        args = append(args, "%"+state+"%")
+        argID++
+    }
+
+	if country != "" {
+        orderClauses = append(orderClauses, fmt.Sprintf("(location ILIKE $%d) DESC", argID))
+        args = append(args, "%"+country+"%")
+        argID++
+    }
+
+	orderClauses = append(orderClauses, fmt.Sprintf("ts_rank(search_vector, websearch_to_tsquery('english', $%d)) DESC", argID))
+    args = append(args, tagQuery)
+    argID++
+
+	query += " ORDER BY " + strings.Join(orderClauses, ", ") + fmt.Sprintf(" LIMIT $%d", argID)
+    args = append(args, limit)
+
+	rows, err := h.db.Query(query, args...)
+    if err != nil {
+        return nil, fmt.Errorf("recommendations query failed: %w", err)
+    }
+    defer rows.Close()
+
+    var hackathons []domain.Hackathon
+    for rows.Next() {
+        var event domain.Hackathon
+        err := rows.Scan(&event.ID, &event.Title, &event.Host, &event.Location, &event.PrizeUSD, &event.StartDate, &event.EndDate, &event.ApplyURL)
+        if err != nil {
+            return nil, fmt.Errorf("failed to scan recommendation row: %w", err)
+        }
+        hackathons = append(hackathons, event)
+    }
+
+    return hackathons, nil
+}

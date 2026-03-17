@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/binit2-1/hackersquare/apps/api/internal/domain"
-	"github.com/binit2-1/hackersquare/apps/api/internal/repository/pg"
 )
 
 type HackathonHandler struct {
@@ -283,21 +282,19 @@ func(h *HackathonHandler) GetRecommendations(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	city := pg.NormalizeSearchQuery(r.Header.Get("x-vercel-ip-city"))
-	searchTerms := append(userProfile.TechTags, city)
-	recommendationQuery := strings.Join(searchTerms, " ")
+	queryValues := r.URL.Query()
+    state := strings.TrimSpace(queryValues.Get("clientState"))
+    country := strings.TrimSpace(queryValues.Get("clientCountry"))
 
-	filters := domain.SearchFilters{
-		Query: recommendationQuery,
-		Status: "upcoming",
-		Page: 1,
-		Limit: 4,
-	}
-
-	hackathons, _, err := h.Repo.SearchHackathons(filters)
-	if err != nil {
+	hackathons, err := h.Repo.GetUserRecommendations(userProfile.TechTags, state, country, 20)
+    if err != nil {
+        fmt.Printf("Recommendation Database Error: %v\n", err)
         http.Error(w, "Failed to fetch recommendations", http.StatusInternalServerError)
         return
+    }
+
+    if hackathons == nil {
+        hackathons = []domain.Hackathon{}
     }
 
     w.Header().Set("Content-Type", "application/json")
