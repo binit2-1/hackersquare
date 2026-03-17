@@ -5,4 +5,5 @@ import "context"
 type AIService interface {
 	GenerateProfileReadme(ctx context.Context, githubData string) (string, error)
 	GenerateSearchInsights(ctx context.Context, profileReadme, searchQuery, hackathonsContext string) (string, error)
+	GenerateTechTags(ctx context.Context, profileReadme string) ([]string, error)
 }

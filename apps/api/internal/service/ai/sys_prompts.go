@@ -39,3 +39,7 @@ Strict rules:
 - Add some tips based on the provided hackathon titles regarding which hackathons the user should participate in based on their profile and location.
 - Only give practical advice that the user can action on. Avoid generic statements. Be specific about the hackathon names provided in the context and the user's profile.
 - CRITICAL: If the Top Search Results say "No specific hackathons found", you MUST acknowledge that there are no active hackathons for their exact search. Instead, suggest 2 alternative search terms or categories they should look for that perfectly match their profile.`
+
+
+const GenerateTechTagsPrompt = `You are a technical profiler. Read the user's developer profile README and extract exactly 4 core technical keywords (e.g., Go, Next.js, Frontend, Open Source). 
+Output ONLY a comma-separated list of these words. Do not include any other text, formatting, or bullet points.`

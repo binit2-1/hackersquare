@@ -73,7 +73,7 @@ func (h *PostgresUserRepo) GetUserByEmail(email string) (*domain.User, error) {
 func (h *PostgresUserRepo) GetUserByID(id string) (*domain.User, error) {
 	var user domain.User
 
-	query := `SELECT id, name, email, COALESCE(headline, ''), COALESCE(location, ''), COALESCE(github_handle, ''), COALESCE(website_url, ''), COALESCE(linkedin_url, ''), COALESCE(twitter_url, ''), COALESCE(profile_readme, '') FROM users WHERE id = $1`
+	query := `SELECT id, name, email, COALESCE(headline, ''), COALESCE(location, ''), COALESCE(github_handle, ''), COALESCE(website_url, ''), COALESCE(linkedin_url, ''), COALESCE(twitter_url, ''), COALESCE(profile_readme, ''), ARRAY_AGG(tech_tag) FROM users LEFT JOIN user_tech_tags ON users.id = user_tech_tags.user_id WHERE users.id = $1 GROUP BY users.id, users.name, users.email, users.headline, users.location, users.github_handle, users.website_url, users.linkedin_url, users.twitter_url, users.profile_readme`
 
 	err := h.db.QueryRow(query, id).Scan(
 		&user.ID,
@@ -86,6 +86,7 @@ func (h *PostgresUserRepo) GetUserByID(id string) (*domain.User, error) {
 		&user.LinkedinURL,
 		&user.TwitterURL,
 		&user.ProfileReadme,
+		&user.TechTags,
 	)
 
 	if err != nil {

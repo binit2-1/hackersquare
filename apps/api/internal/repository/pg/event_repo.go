@@ -44,7 +44,7 @@ var searchStopWords = map[string]struct{}{
 	"challenges":   {},
 }
 
-func normalizeSearchQuery(rawQuery string) string {
+func NormalizeSearchQuery(rawQuery string) string {
 	trimmed := strings.TrimSpace(rawQuery)
 	if trimmed == "" {
 		return ""
@@ -86,7 +86,7 @@ func (h *PostgresEventRepo) SearchHackathons(filters domain.SearchFilters) ([]do
 	argID := 1
 
 	if filters.Query != "" {
-		normalizedQuery := normalizeSearchQuery(filters.Query)
+		normalizedQuery := NormalizeSearchQuery(filters.Query)
 		if normalizedQuery != "" {
 			conditions = append(conditions, fmt.Sprintf("search_vector @@ websearch_to_tsquery('english', $%d)", argID))
 			args = append(args, normalizedQuery)

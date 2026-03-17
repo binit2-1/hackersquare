@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/binit2-1/hackersquare/apps/api/internal/domain"
+	"github.com/binit2-1/hackersquare/apps/api/internal/repository/pg"
 )
 
 type HackathonHandler struct {
@@ -267,4 +268,41 @@ func (h *HackathonHandler) GetSearchOverview(w http.ResponseWriter, r *http.Requ
 		"overview": insight,
 	})
 
+}
+
+func(h *HackathonHandler) GetRecommendations(w http.ResponseWriter, r *http.Request) {
+	userID, ok := r.Context().Value("userID").(string)
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	userProfile, err := h.UserRepo.GetUserByID(userID)
+	if err != nil || userProfile == nil {
+		http.Error(w, "Profile not found", http.StatusNotFound)
+		return
+	}
+
+	city := pg.NormalizeSearchQuery(r.Header.Get("x-vercel-ip-city"))
+	searchTerms := append(userProfile.TechTags, city)
+	recommendationQuery := strings.Join(searchTerms, " ")
+
+	filters := domain.SearchFilters{
+		Query: recommendationQuery,
+		Status: "upcoming",
+		Page: 1,
+		Limit: 4,
+	}
+
+	hackathons, _, err := h.Repo.SearchHackathons(filters)
+	if err != nil {
+        http.Error(w, "Failed to fetch recommendations", http.StatusInternalServerError)
+        return
+    }
+
+    w.Header().Set("Content-Type", "application/json")
+    w.WriteHeader(http.StatusOK)
+    json.NewEncoder(w).Encode(map[string]any{
+        "data": hackathons,
+    })
 }

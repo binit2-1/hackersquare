@@ -14,6 +14,7 @@ type User struct {
 	LinkedinURL   string    `json:"linkedin_url"`
 	TwitterURL    string    `json:"twitter_url"`
 	ProfileReadme string    `json:"profileReadme"`
+	TechTags      []string  `json:"tech_tags"`
 	CreatedAt     time.Time `json:"created_at"`
 	UpdatedAt     time.Time `json:"updated_at"`
 }
@@ -24,6 +25,7 @@ type ProfileUpdateRequest struct {
 	WebsiteURL  string `json:"website_url"`
 	LinkedinURL string `json:"linkedin_url"`
 	TwitterURL  string `json:"twitter_url"`
+	TechTags    []string `json:"tech_tags"`
 }
 
 type UserRepository interface {

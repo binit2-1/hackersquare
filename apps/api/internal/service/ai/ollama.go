@@ -1,14 +1,15 @@
 package ai
 
 import (
-    "bytes"
-    "context"
-    "encoding/json"
-    "fmt"
-    "io"
-    "net/http"
+	"bytes"
+	"context"
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+	"strings"
 
-    "github.com/binit2-1/hackersquare/apps/api/internal/domain"
+	"github.com/binit2-1/hackersquare/apps/api/internal/domain"
 )
 
 // We define the simple JSON structures ourselves, bypassing the SDK entirely.
@@ -108,4 +109,25 @@ func (s *OllamaService) GenerateProfileReadme(ctx context.Context, githubData st
 func (s *OllamaService) GenerateSearchInsights(ctx context.Context, profileReadme, searchQuery, hackathonsContext string) (string, error) {
     userMessage := fmt.Sprintf("User Profile:\n%s\n\nSearch Query: %s\n\nTop Search Results:\n%s", profileReadme, searchQuery, hackathonsContext)
     return s.makeChatRequest(ctx, SearchInsightsPrompt, userMessage)
+}
+
+func (s *OllamaService) GenerateTechTags(ctx context.Context, profileReadme string) ([]string, error) {
+    userMessage := fmt.Sprintf("Profile:\n%s", profileReadme)
+
+    rawResponse, err := s.makeChatRequest(ctx, GenerateTechTagsPrompt, userMessage)
+    if err != nil {
+        return nil, err
+    }
+
+    rawTags := strings.Split(rawResponse, ",")
+
+    var techTags []string
+    for _, tag := range rawTags{
+        cleanTag := strings.TrimSpace(tag)
+        if cleanTag != "" {
+            techTags = append(techTags, cleanTag)
+        }
+    }
+
+    return techTags, nil
 }

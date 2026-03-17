@@ -1,0 +1,1 @@
+DROP COLUMN tech_tags;
