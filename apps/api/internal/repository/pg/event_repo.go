@@ -283,43 +283,57 @@ func (h *PostgresEventRepo) DeleteExpiredHackathons() (int64, error) {
 	return rowsAffected, nil
 }
 
-func (h *PostgresEventRepo) GetUserRecommendations(tags []string, state string, country string, limit int) ([]domain.Hackathon, error) {
-	tagQuery := strings.Join(tags, " ")
-	if tagQuery == "" {
-		tagQuery = "hackathon"
-	}
+func (h *PostgresEventRepo) GetUserRecommendations(tags []string, city, state, country string, limit int) ([]domain.Hackathon, error) {
+    tagQuery := strings.Join(tags, " ")
+    if tagQuery == "" {
+        tagQuery = "hackathon" 
+    }
 
-	query := `
+    query := `
     SELECT id, title, COALESCE(host, 'Unknown Host'), COALESCE(location, 'TBA'), COALESCE(prize_usd, 0.0), start_date, end_date, COALESCE(apply_url, '')
     FROM hackathons
     WHERE start_date >= CURRENT_DATE + INTERVAL '5 days'
     `
 
+    var args []any
+    argID := 1
+    var scoreCases []string
 
-	var args []any
-	argID := 1
-	var orderClauses []string
-
-	if state != "" {
-        orderClauses = append(orderClauses, fmt.Sprintf("(location ILIKE $%d) DESC", argID))
+    // Tier 4: Exact City Match (Highest Priority)
+    if city != "" {
+        scoreCases = append(scoreCases, fmt.Sprintf("WHEN location ILIKE $%d THEN 4", argID))
+        args = append(args, "%"+city+"%")
+        argID++
+    }
+    // Tier 3: State Match
+    if state != "" {
+        scoreCases = append(scoreCases, fmt.Sprintf("WHEN location ILIKE $%d THEN 3", argID))
         args = append(args, "%"+state+"%")
         argID++
     }
-
-	if country != "" {
-        orderClauses = append(orderClauses, fmt.Sprintf("(location ILIKE $%d) DESC", argID))
+    // Tier 2: Country Match
+    if country != "" {
+        scoreCases = append(scoreCases, fmt.Sprintf("WHEN location ILIKE $%d THEN 2", argID))
         args = append(args, "%"+country+"%")
         argID++
     }
 
-	orderClauses = append(orderClauses, fmt.Sprintf("ts_rank(search_vector, websearch_to_tsquery('english', $%d)) DESC", argID))
+    // Tier 1: Online/Remote (Safe fallback before showing random global events)
+    scoreCases = append(scoreCases, "WHEN location ILIKE '%online%' OR location ILIKE '%remote%' THEN 1")
+
+    // Compile the scoring logic
+    locationScoreExpr := "CASE " + strings.Join(scoreCases, " ") + " ELSE 0 END"
+
+    // Add the tags for the ts_rank
     args = append(args, tagQuery)
+    rankArg := argID
     argID++
 
-	query += " ORDER BY " + strings.Join(orderClauses, ", ") + fmt.Sprintf(" LIMIT $%d", argID)
+    // The Magic: Strictly order by Geographic Tier FIRST, then Tech Stack relevance SECOND
+    query += fmt.Sprintf(" ORDER BY (%s) DESC, ts_rank(search_vector, websearch_to_tsquery('english', $%d)) DESC LIMIT $%d", locationScoreExpr, rankArg, argID)
     args = append(args, limit)
 
-	rows, err := h.db.Query(query, args...)
+    rows, err := h.db.Query(query, args...)
     if err != nil {
         return nil, fmt.Errorf("recommendations query failed: %w", err)
     }
