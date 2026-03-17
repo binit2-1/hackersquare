@@ -2,7 +2,9 @@ package pg
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/binit2-1/hackersquare/apps/api/internal/domain"
 	"golang.org/x/crypto/bcrypt"
@@ -72,8 +74,9 @@ func (h *PostgresUserRepo) GetUserByEmail(email string) (*domain.User, error) {
 
 func (h *PostgresUserRepo) GetUserByID(id string) (*domain.User, error) {
 	var user domain.User
+	var techTagsJSON []byte
 
-	query := `SELECT id, name, email, COALESCE(headline, ''), COALESCE(location, ''), COALESCE(github_handle, ''), COALESCE(website_url, ''), COALESCE(linkedin_url, ''), COALESCE(twitter_url, ''), COALESCE(profile_readme, ''), ARRAY_AGG(tech_tag) FROM users LEFT JOIN user_tech_tags ON users.id = user_tech_tags.user_id WHERE users.id = $1 GROUP BY users.id, users.name, users.email, users.headline, users.location, users.github_handle, users.website_url, users.linkedin_url, users.twitter_url, users.profile_readme`
+	query := `SELECT id, name, email, COALESCE(headline, ''), COALESCE(location, ''), COALESCE(github_handle, ''), COALESCE(website_url, ''), COALESCE(linkedin_url, ''), COALESCE(twitter_url, ''), COALESCE(profile_readme, ''), COALESCE(array_to_json(tech_tags), '[]'::json) FROM users WHERE id = $1`
 
 	err := h.db.QueryRow(query, id).Scan(
 		&user.ID,
@@ -86,14 +89,44 @@ func (h *PostgresUserRepo) GetUserByID(id string) (*domain.User, error) {
 		&user.LinkedinURL,
 		&user.TwitterURL,
 		&user.ProfileReadme,
-		&user.TechTags,
+		&techTagsJSON,
 	)
 
 	if err != nil {
+		if strings.Contains(err.Error(), "column") {
+			fallbackQuery := `SELECT id, name, email, '' AS headline, '' AS location, '' AS github_handle, '' AS website_url, '' AS linkedin_url, '' AS twitter_url, '' AS profile_readme, '[]'::json AS tech_tags FROM users WHERE id = $1`
+			err = h.db.QueryRow(fallbackQuery, id).Scan(
+				&user.ID,
+				&user.Name,
+				&user.Email,
+				&user.Headline,
+				&user.Location,
+				&user.GithubHandle,
+				&user.WebsiteURL,
+				&user.LinkedinURL,
+				&user.TwitterURL,
+				&user.ProfileReadme,
+				&techTagsJSON,
+			)
+		}
+
 		if err == sql.ErrNoRows {
 			return nil, nil
 		}
 		return nil, fmt.Errorf("failed to get user by id: %w", err)
+	}
+
+	if len(techTagsJSON) == 0 {
+		user.TechTags = []string{}
+		return &user, nil
+	}
+
+	if err := json.Unmarshal(techTagsJSON, &user.TechTags); err != nil {
+		return nil, fmt.Errorf("failed to parse user tech tags: %w", err)
+	}
+
+	if user.TechTags == nil {
+		user.TechTags = []string{}
 	}
 
 	return &user, nil
