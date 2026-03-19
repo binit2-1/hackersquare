@@ -32,4 +32,5 @@ type HackathonRepository interface {
 	DeleteExpiredHackathons() (int64, error)
 	GetUserRecommendations(tags []string, city, state, country string, limit int) ([]Hackathon, error)
 	GetMatchingChats(ctx context.Context, hackLocation string, hackTags []string) ([]string, error)
+	GetNewHackathonsSince(ctx context.Context, since time.Time) ([]Hackathon, error)
 }

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/binit2-1/hackersquare/apps/api/internal/domain"
 	"github.com/lib/pq"
@@ -401,7 +402,30 @@ func (r *PostgresEventRepo) GetMatchingChats(ctx context.Context, hackLocation s
 	}
 	return chatIDs, nil
 
+}
 
+func (r *PostgresEventRepo) GetNewHackathonsSince(ctx context.Context, since time.Time) ([]domain.Hackathon, error) {
+	query := `
+		SELECT id, title, COALESCE(host, 'Unknown Host'), COALESCE(location, 'TBA'), COALESCE(prize_usd, 0.0), start_date, end_date, COALESCE(apply_url, '')
+		FROM hackathons
+		WHERE created_at > $1
+		ORDER BY created_at ASC
+	`
 
+	rows, err := r.db.QueryContext(ctx, query, since)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch new hackathons: %w", err)
+	}
+	defer rows.Close()
+
+	var hackathons []domain.Hackathon
+	for rows.Next() {
+		var event domain.Hackathon
+		err := rows.Scan(&event.ID, &event.Title, &event.Host, &event.Location, &event.PrizeUSD, &event.StartDate, &event.EndDate, &event.ApplyURL)
+		if err == nil {
+			hackathons = append(hackathons, event)
+		}
+	}
+	return hackathons, nil
 
 }

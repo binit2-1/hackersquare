@@ -13,8 +13,6 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
-
-
 func InitTelegramBot() (*tgbotapi.BotAPI, error) {
 	token := os.Getenv("TELEGRAM_BOT_TOKEN")
 	if token == "" {
@@ -101,61 +99,58 @@ func RunTelegramListener(bot *tgbotapi.BotAPI, repo *pg.PostgresEventRepo) {
 	}
 }
 
-func StartHackathonNotifier(bot *tgbotapi.BotAPI, repo *pg.PostgresEventRepo, targetChatID int64) {
+func StartHackathonNotifier(bot *tgbotapi.BotAPI, repo *pg.PostgresEventRepo) {
 	ticker := time.NewTicker(1 * time.Minute)
 	defer ticker.Stop()
 
-	fmt.Println("telegram notifier ticker has started...")
+	lastCheck := time.Now()
+
+	fmt.Println("⏰ Telegram notifier ticker has started...")
 
 	for range ticker.C {
-		hackathons, err := repo.GetUserRecommendations([]string{"hackathons"}, "", "", "", 1)
-		if err != nil || len(hackathons) == 0 {
-			log.Println("Notifier: No hackathons found or DB error.")
-			continue
-		}
-
-		h := hackathons[0]
-
-
-		subscribers, err := repo.GetMatchingChats(context.Background(), h.Location, []string{})
+		newHackathons, err := repo.GetNewHackathonsSince(context.Background(), lastCheck)
 		if err != nil {
-			log.Printf("Failed to get subscribers: %v", err)
+			log.Printf("Notifier DB Error: %v\n", err)
 			continue
 		}
 
-		if len(subscribers) == 0 {
-			fmt.Println("No matching subscribers for this hackathon.")
-			continue
+		if len(newHackathons) > 0 {
+			lastCheck = time.Now()
 		}
 
-		msgText := fmt.Sprintf(
-			"🚀 *New Hackathon Alert!*\n\n* %s *\n📍 %s\n💰 Prize Pool: $%.2f\n📅 Starts: %s\n🔗 [Apply Here](%s)",
-			h.Title,
-			h.Location,
-			*h.PrizeUSD,
-			h.StartDate.Format("Jan 02, 2006"),
-			h.ApplyURL,
-		)
-
-		for _, chatIDStr := range subscribers {
-			// Convert the string Chat ID back to an int64 for Telegram
-			chatID, parseErr := strconv.ParseInt(chatIDStr, 10, 64)
-			if parseErr != nil {
-				continue
+		// Loop through the new hackathons and route them. 'h' is defined here!
+		for _, h := range newHackathons {
+			subscribers, err := repo.GetMatchingChats(context.Background(), h.Location, []string{})
+			if err != nil || len(subscribers) == 0 {
+				continue // Nobody matched this one, skip to the next hackathon
 			}
 
-			msg := tgbotapi.NewMessage(chatID, msgText)
-			msg.ParseMode = "Markdown"
-			msg.DisableWebPagePreview = true
+			// Note: If PrizeUSD is a pointer in your struct, use *h.PrizeUSD here
+			msgText := fmt.Sprintf(
+				"🚀 *New Hackathon Alert!*\n\n* %s *\n📍 %s\n💰 Prize Pool: $%.2f\n📅 Starts: %s\n🔗 [Apply Here](%s)",
+				h.Title,
+				h.Location,
+				*h.PrizeUSD, // Assuming it's a pointer based on your previous code
+				h.StartDate.Format("Jan 02, 2006"),
+				h.ApplyURL,
+			)
 
-			if _, err := bot.Send(msg); err != nil {
-				log.Printf("Failed to send to %s: %v\n", chatIDStr, err)
-			} else {
-				fmt.Printf("✅ Sent targeted alert to ChatID: %s\n", chatIDStr)
+			for _, chatIDStr := range subscribers {
+				chatID, parseErr := strconv.ParseInt(chatIDStr, 10, 64)
+				if parseErr != nil {
+					continue
+				}
+
+				msg := tgbotapi.NewMessage(chatID, msgText)
+				msg.ParseMode = "Markdown"
+				msg.DisableWebPagePreview = true
+
+				if _, err := bot.Send(msg); err != nil {
+					log.Printf("Failed to send to %s: %v\n", chatIDStr, err)
+				} else {
+					fmt.Printf("✅ Sent targeted alert for '%s' to ChatID: %s\n", h.Title, chatIDStr)
+				}
 			}
 		}
 	}
-
 }
-
-

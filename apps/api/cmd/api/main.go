@@ -101,8 +101,7 @@ func main() {
 
 	go bot.RunTelegramListener(tgbot, pgRepo.(*pg.PostgresEventRepo))
 
-	var myTelegramChatID int64 = 2089016868
-	go bot.StartHackathonNotifier(tgbot, pgRepo.(*pg.PostgresEventRepo), myTelegramChatID)
+	go bot.StartHackathonNotifier(tgbot, pgRepo.(*pg.PostgresEventRepo))
 
 	//cleanup
 	go func() {
