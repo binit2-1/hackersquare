@@ -15,6 +15,13 @@ import (
 
 func InitTelegramBot() (*tgbotapi.BotAPI, error) {
 	token := os.Getenv("TELEGRAM_BOT_TOKEN")
+
+	fmt.Printf("🚨 DEBUG: Token string length is: %d\n", len(token))
+    if len(token) > 5 {
+        fmt.Printf("🚨 DEBUG: Token starts with: %s\n", token[:5])
+        fmt.Printf("🚨 DEBUG: Token ends with: %s\n", token[len(token)-5:])
+    }
+	
 	if token == "" {
 		return nil, fmt.Errorf("TELEGRAM_BOT_TOKEN environment variable is empty")
 	}
