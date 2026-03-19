@@ -97,11 +97,11 @@ func main() {
 		log.Printf("Telegram init failed: %v", err)
 	} else {
 		log.Printf("Telegram ready as @%s", tgbot.Self.UserName)
+		go bot.RunTelegramListener(tgbot, pgRepo.(*pg.PostgresEventRepo))
+		go bot.StartHackathonNotifier(tgbot, pgRepo.(*pg.PostgresEventRepo))
 	}
 
-	go bot.RunTelegramListener(tgbot, pgRepo.(*pg.PostgresEventRepo))
 
-	go bot.StartHackathonNotifier(tgbot, pgRepo.(*pg.PostgresEventRepo))
 
 	//cleanup
 	go func() {
