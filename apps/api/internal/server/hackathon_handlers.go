@@ -269,7 +269,7 @@ func (h *HackathonHandler) GetSearchOverview(w http.ResponseWriter, r *http.Requ
 
 }
 
-func(h *HackathonHandler) GetRecommendations(w http.ResponseWriter, r *http.Request) {
+func (h *HackathonHandler) GetRecommendations(w http.ResponseWriter, r *http.Request) {
 	userID, ok := r.Context().Value("userID").(string)
 	if !ok {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
@@ -283,24 +283,24 @@ func(h *HackathonHandler) GetRecommendations(w http.ResponseWriter, r *http.Requ
 	}
 
 	queryValues := r.URL.Query()
-    city := strings.TrimSpace(queryValues.Get("clientCity"))
-    state := strings.TrimSpace(queryValues.Get("clientState"))
-    country := strings.TrimSpace(queryValues.Get("clientCountry"))
+	city := strings.TrimSpace(queryValues.Get("clientCity"))
+	state := strings.TrimSpace(queryValues.Get("clientState"))
+	country := strings.TrimSpace(queryValues.Get("clientCountry"))
 
 	hackathons, err := h.Repo.GetUserRecommendations(userProfile.TechTags, city, state, country, 20)
-    if err != nil {
-        fmt.Printf("Recommendation Database Error: %v\n", err)
-        http.Error(w, "Failed to fetch recommendations", http.StatusInternalServerError)
-        return
-    }
+	if err != nil {
+		fmt.Printf("Recommendation Database Error: %v\n", err)
+		http.Error(w, "Failed to fetch recommendations", http.StatusInternalServerError)
+		return
+	}
 
-    if hackathons == nil {
-        hackathons = []domain.Hackathon{}
-    }
+	if hackathons == nil {
+		hackathons = []domain.Hackathon{}
+	}
 
-    w.Header().Set("Content-Type", "application/json")
-    w.WriteHeader(http.StatusOK)
-    json.NewEncoder(w).Encode(map[string]any{
-        "data": hackathons,
-    })
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]any{
+		"data": hackathons,
+	})
 }

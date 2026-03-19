@@ -1,12 +1,14 @@
 package pg
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"strconv"
 	"strings"
 
 	"github.com/binit2-1/hackersquare/apps/api/internal/domain"
+	"github.com/lib/pq"
 )
 
 type PostgresEventRepo struct {
@@ -284,70 +286,122 @@ func (h *PostgresEventRepo) DeleteExpiredHackathons() (int64, error) {
 }
 
 func (h *PostgresEventRepo) GetUserRecommendations(tags []string, city, state, country string, limit int) ([]domain.Hackathon, error) {
-    tagQuery := strings.Join(tags, " ")
-    if tagQuery == "" {
-        tagQuery = "hackathon" 
-    }
+	tagQuery := strings.Join(tags, " ")
+	if tagQuery == "" {
+		tagQuery = "hackathon"
+	}
 
-    query := `
+	query := `
     SELECT id, title, COALESCE(host, 'Unknown Host'), COALESCE(location, 'TBA'), COALESCE(prize_usd, 0.0), start_date, end_date, COALESCE(apply_url, '')
     FROM hackathons
     WHERE start_date >= CURRENT_DATE + INTERVAL '5 days'
     `
 
-    var args []any
-    argID := 1
-    var scoreCases []string
+	var args []any
+	argID := 1
+	var scoreCases []string
 
-    // Tier 4: Exact City Match (Highest Priority)
-    if city != "" {
-        scoreCases = append(scoreCases, fmt.Sprintf("WHEN location ILIKE $%d THEN 4", argID))
-        args = append(args, "%"+city+"%")
-        argID++
-    }
-    // Tier 3: State Match
-    if state != "" {
-        scoreCases = append(scoreCases, fmt.Sprintf("WHEN location ILIKE $%d THEN 3", argID))
-        args = append(args, "%"+state+"%")
-        argID++
-    }
-    // Tier 2: Country Match
-    if country != "" {
-        scoreCases = append(scoreCases, fmt.Sprintf("WHEN location ILIKE $%d THEN 2", argID))
-        args = append(args, "%"+country+"%")
-        argID++
-    }
+	// Tier 4: Exact City Match (Highest Priority)
+	if city != "" {
+		scoreCases = append(scoreCases, fmt.Sprintf("WHEN location ILIKE $%d THEN 4", argID))
+		args = append(args, "%"+city+"%")
+		argID++
+	}
+	// Tier 3: State Match
+	if state != "" {
+		scoreCases = append(scoreCases, fmt.Sprintf("WHEN location ILIKE $%d THEN 3", argID))
+		args = append(args, "%"+state+"%")
+		argID++
+	}
+	// Tier 2: Country Match
+	if country != "" {
+		scoreCases = append(scoreCases, fmt.Sprintf("WHEN location ILIKE $%d THEN 2", argID))
+		args = append(args, "%"+country+"%")
+		argID++
+	}
 
-    // Tier 1: Online/Remote (Safe fallback before showing random global events)
-    scoreCases = append(scoreCases, "WHEN location ILIKE '%online%' OR location ILIKE '%remote%' THEN 1")
+	// Tier 1: Online/Remote (Safe fallback before showing random global events)
+	scoreCases = append(scoreCases, "WHEN location ILIKE '%online%' OR location ILIKE '%remote%' THEN 1")
 
-    // Compile the scoring logic
-    locationScoreExpr := "CASE " + strings.Join(scoreCases, " ") + " ELSE 0 END"
+	// Compile the scoring logic
+	locationScoreExpr := "CASE " + strings.Join(scoreCases, " ") + " ELSE 0 END"
 
-    // Add the tags for the ts_rank
-    args = append(args, tagQuery)
-    rankArg := argID
-    argID++
+	// Add the tags for the ts_rank
+	args = append(args, tagQuery)
+	rankArg := argID
+	argID++
 
-    // The Magic: Strictly order by Geographic Tier FIRST, then Tech Stack relevance SECOND
-    query += fmt.Sprintf(" ORDER BY (%s) DESC, ts_rank(search_vector, websearch_to_tsquery('english', $%d)) DESC LIMIT $%d", locationScoreExpr, rankArg, argID)
-    args = append(args, limit)
+	// The Magic: Strictly order by Geographic Tier FIRST, then Tech Stack relevance SECOND
+	query += fmt.Sprintf(" ORDER BY (%s) DESC, ts_rank(search_vector, websearch_to_tsquery('english', $%d)) DESC LIMIT $%d", locationScoreExpr, rankArg, argID)
+	args = append(args, limit)
 
-    rows, err := h.db.Query(query, args...)
-    if err != nil {
-        return nil, fmt.Errorf("recommendations query failed: %w", err)
-    }
-    defer rows.Close()
+	rows, err := h.db.Query(query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("recommendations query failed: %w", err)
+	}
+	defer rows.Close()
 
-    var hackathons []domain.Hackathon
-    for rows.Next() {
-        var event domain.Hackathon
-        err := rows.Scan(&event.ID, &event.Title, &event.Host, &event.Location, &event.PrizeUSD, &event.StartDate, &event.EndDate, &event.ApplyURL)
-        if err != nil {
-            return nil, fmt.Errorf("failed to scan recommendation row: %w", err)
-        }
-        hackathons = append(hackathons, event)
-    }
+	var hackathons []domain.Hackathon
+	for rows.Next() {
+		var event domain.Hackathon
+		err := rows.Scan(&event.ID, &event.Title, &event.Host, &event.Location, &event.PrizeUSD, &event.StartDate, &event.EndDate, &event.ApplyURL)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan recommendation row: %w", err)
+		}
+		hackathons = append(hackathons, event)
+	}
 
-    return hackathons, nil
+	return hackathons, nil
+}
+
+func (r *PostgresEventRepo) UpsertSubscription(ctx context.Context, platform, chatID string, tags []string, country string) error {
+	query := `
+        INSERT INTO channel_subscriptions (platform, chat_id, tech_tags, country, is_active)
+        VALUES ($1, $2, $3, $4, true)
+        ON CONFLICT (chat_id) 
+        DO UPDATE SET 
+            tech_tags = EXCLUDED.tech_tags,
+            country = EXCLUDED.country,
+            is_active = true,
+            platform = EXCLUDED.platform;
+    `
+
+	_, err := r.db.ExecContext(ctx, query, platform, chatID, pq.Array(tags), country)
+	if err != nil {
+		return fmt.Errorf("failed to upsert subscription: %w", err)
+	}
+	return nil
+}
+
+func (r *PostgresEventRepo) GetMatchingChats(ctx context.Context, hackLocation string, hackTags []string) ([]string, error) {
+	if len(hackTags) == 0 {
+		hackTags = []string{"hackathon"}
+	}
+
+	query := `
+		SELECT chat_id 
+		FROM channel_subscriptions 
+		WHERE is_active = true
+		AND (country = '' OR $1 ILIKE '%' || country || '%')
+		AND (cardinality(tech_tags) = 0 OR tech_tags && $2)
+	`
+
+	rows, err := r.db.QueryContext(ctx, query, hackLocation, pq.Array(hackTags))
+	if err != nil {
+		return nil, fmt.Errorf("failed to query subscriptions: %w", err)
+	}
+	defer rows.Close()
+
+	var chatIDs []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err == nil {
+			chatIDs = append(chatIDs, id)
+		}
+	}
+	return chatIDs, nil
+
+
+
+
 }

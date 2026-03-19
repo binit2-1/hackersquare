@@ -1,6 +1,9 @@
 package domain
 
-import "time"
+import (
+	"context"
+	"time"
+)
 
 type Hackathon struct {
 	ID        string    `json:"id"`
@@ -28,4 +31,5 @@ type HackathonRepository interface {
 	NearbyHackathons(city, country string, page, limit int) ([]Hackathon, int, error)
 	DeleteExpiredHackathons() (int64, error)
 	GetUserRecommendations(tags []string, city, state, country string, limit int) ([]Hackathon, error)
+	GetMatchingChats(ctx context.Context, hackLocation string, hackTags []string) ([]string, error)
 }

@@ -20,11 +20,11 @@ type User struct {
 }
 
 type ProfileUpdateRequest struct {
-	Headline    string `json:"headline"`
-	Location    string `json:"location"`
-	WebsiteURL  string `json:"website_url"`
-	LinkedinURL string `json:"linkedin_url"`
-	TwitterURL  string `json:"twitter_url"`
+	Headline    string   `json:"headline"`
+	Location    string   `json:"location"`
+	WebsiteURL  string   `json:"website_url"`
+	LinkedinURL string   `json:"linkedin_url"`
+	TwitterURL  string   `json:"twitter_url"`
 	TechTags    []string `json:"tech_tags"`
 }
 

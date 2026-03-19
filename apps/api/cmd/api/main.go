@@ -8,6 +8,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/binit2-1/hackersquare/apps/api/internal/bot"
 	"github.com/binit2-1/hackersquare/apps/api/internal/repository/pg"
 	scraper "github.com/binit2-1/hackersquare/apps/api/internal/scaper"
 	"github.com/binit2-1/hackersquare/apps/api/internal/server"
@@ -88,6 +89,20 @@ func main() {
 	mux.HandleFunc("GET /v1/recommendations", server.AuthMiddleware(hackathonHandler.GetRecommendations))
 
 	fmt.Printf("Starting server on port %s\n", port)
+
+	//tgbot
+
+	tgbot, err := bot.InitTelegramBot()
+	if err != nil {
+		log.Printf("Telegram init failed: %v", err)
+	} else {
+		log.Printf("Telegram ready as @%s", tgbot.Self.UserName)
+	}
+
+	go bot.RunTelegramListener(tgbot, pgRepo.(*pg.PostgresEventRepo))
+
+	var myTelegramChatID int64 = 2089016868
+	go bot.StartHackathonNotifier(tgbot, pgRepo.(*pg.PostgresEventRepo), myTelegramChatID)
 
 	//cleanup
 	go func() {
